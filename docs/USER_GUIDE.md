@@ -2,7 +2,7 @@
 
 **将凝胶标注、原始数据定量和科研组图放在同一个本地工作台。**
 
-版本：**0.6.1 · 完整科研工具包**。Windows 客户端、科学计算环境、Cellpose CPU 引擎及 cyto3 / nuclei 权重放在同一个下载包中。正式下载与验收状态以 [GitHub Releases](https://github.com/tuantuan007/figure-workbench/releases) 中同版本的发行记录为准；开发分支不等于已经发布。本项目根据 GelFigure 与 ScieFig 的功能、工程格式和代码审计结果重新实现数据、计算、任务、渲染与交互层。当前不接入 FigScan。
+版本：**0.6.1 · 完整科研工具包**。Windows 客户端、科学计算环境、Cellpose CPU 引擎及 cyto3 / nuclei 权重放在同一个下载包中。正式下载与验收状态以 [GitHub Releases](https://github.com/aper-ai/figure-workbench/releases) 中同版本的发行记录为准；开发分支不等于已经发布。本项目根据 GelFigure 与 ScieFig 的功能、工程格式和代码审计结果重新实现数据、计算、任务、渲染与交互层。当前不接入 FigScan。
 
 本版统一项目操作、任务导航、分析设置和排版属性的视觉与术语；补充数据导入、保存失败恢复、项目重开、数值精度及导出尺寸的检查与修复。完整验收范围见 [0.6 验收清单](ACCEPTANCE_0.6.md)，数据流程修复见 [数据输入输出检查](QA_DATA_FLOW_0.6.md)。既有数值方法和科学口径见 [科学计算修复记录](QA_SCIENCE_0.5.md)。
 
@@ -12,7 +12,7 @@
 
 **只有完成同一源码提交的全部验收，才提供正式发行包。** Windows Actions 从最终完整 ZIP 解压到新的中文、空格路径，再执行包内两模型推理与原生窗口测试，同时检查数值、服务及完整浏览器流程。失败、跳过、缺少或来自旧源码的结果均阻止发布。发行流程核对三个交付文件的 SHA-256，上传实际验收过的文件，并附带 `QA_Evidence.zip`、`RELEASE_ACCEPTANCE.json` 和 `SHA256SUMS`，共六个附件。
 
-历史版本保留在发行页。0.4 的 EXE 会启动外部浏览器；0.5 已改为独立窗口，但主程序与 Cellpose 分包。0.6 采用单个完整 Windows 包。仓库为私有，需要使用有访问权限的 GitHub 账号。
+当前发行见[本仓库 Releases](https://github.com/aper-ai/figure-workbench/releases)；迁移前完整版本历史见[原仓库发行记录](https://github.com/tuantuan007/figure-workbench/releases)。0.4 的 EXE 会启动外部浏览器；0.5 已改为独立窗口，但主程序与 Cellpose 分包。0.6 采用单个完整 Windows 包。仓库为私有，需要使用有访问权限的 GitHub 账号。
 
 ## 免安装浏览器组图版
 
@@ -49,6 +49,8 @@ python run.py --no-browser --data-dir ./my-workspace
 ```
 
 Windows 源码环境应同时安装 `requirements.txt` 和 `requirements-desktop.txt`。不要把源码首次联网安装流程与已打包客户端的日常启动步骤混为一谈。
+
+Windows 完整工具包构建使用经过 SHA-256 校验的 v0.4.0 基础运行时，其原始附件作为构建资料保存在 [build-runtime-0.4.0](https://github.com/aper-ai/figure-workbench/releases/tag/build-runtime-0.4.0)。该附件供构建流程使用，普通用户使用 0.6.1 完整包；来源及校验约定见[仓库来源说明](REPOSITORY_PROVENANCE.md)。
 
 ## 已实现的功能
 

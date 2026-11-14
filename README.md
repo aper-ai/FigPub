@@ -65,9 +65,9 @@ Cellpose 使用完整包中的 CPU 环境和预训练权重执行细胞或细胞
 
 ### Windows 完整工具包
 
-[下载 Figure Workbench 0.6.1 Windows 完整包](https://github.com/tuantuan007/figure-workbench/releases/download/v0.6.1/Figure_Workbench_0.6.1_Windows_Full.zip) · [0.6.1 发行记录与验收附件](https://github.com/tuantuan007/figure-workbench/releases/tag/v0.6.1)
+[下载 Figure Workbench 0.6.1 Windows 完整包](https://github.com/aper-ai/figure-workbench/releases/download/v0.6.1/Figure_Workbench_0.6.1_Windows_Full.zip) · [0.6.1 发行记录与验收附件](https://github.com/aper-ai/figure-workbench/releases/tag/v0.6.1)
 
-上述链接指向仓库迁移前已验收的 0.6.1 发行记录，访问受原仓库权限控制。
+本仓库提供已验收 0.6.1 发行文件的镜像，软件包、源码包与验收附件的 SHA-256 均与原发行一致。源提交与迁移记录见[仓库来源与维护基线](docs/REPOSITORY_PROVENANCE.md)。
 
 1. 完整解压 `Figure_Workbench_0.6.1_Windows_Full.zip`。
 2. 运行 `FigureWorkbench.exe`，保留同级的 `runtime/`、`app/`、`cellpose/` 目录。
@@ -80,7 +80,7 @@ Cellpose 使用完整包中的 CPU 环境和预训练权重执行细胞或细胞
 
 ### 浏览器组图版
 
-[下载独立组图 HTML](https://github.com/tuantuan007/figure-workbench/releases/download/v0.6.1/Figure_Workbench_0.6.1_Browser.html)，在现代桌面浏览器中本地打开。该版本提供图片导入、排版、工程保存与 PNG/SVG/栅格 PDF 导出；完整科学分析由 Windows 客户端提供。格式互通说明见 [浏览器组图版文档](docs/BROWSER_STUDIO.md)。
+[下载独立组图 HTML](https://github.com/aper-ai/figure-workbench/releases/download/v0.6.1/Figure_Workbench_0.6.1_Browser.html)，在现代桌面浏览器中本地打开。该版本提供图片导入、排版、工程保存与 PNG/SVG/栅格 PDF 导出；完整科学分析由 Windows 客户端提供。格式互通说明见 [浏览器组图版文档](docs/BROWSER_STUDIO.md)。
 
 ### 源码运行
 
@@ -92,6 +92,8 @@ python run.py
 ```
 
 首次安装依赖需要联网。源码运行环境不包含发行包附带的 Cellpose 独立环境和模型权重；模型分析可直接使用 Windows 完整包。macOS/Linux 通过 `python3 launch.py` 启动本地服务与浏览器界面。
+
+**Windows 构建资料：**完整工具包的构建流程使用经过 SHA-256 校验的 v0.4.0 基础运行时，单独保存在 [build-runtime-0.4.0](https://github.com/aper-ai/figure-workbench/releases/tag/build-runtime-0.4.0)。该附件用于构建；普通使用下载上方的 0.6.1 完整包。构建来源与校验约定见[仓库来源说明](docs/REPOSITORY_PROVENANCE.md)。
 
 ## 输入与输出
 
@@ -118,7 +120,7 @@ PNG/TIFF 图稿输出为显示用 RGB 成图，原始实验数据保存在来源
 | 原生 Windows 客户端 | 15 个场景通过 |
 | 完整包内模型推理 | `nuclei`、`cyto3` 均通过 |
 
-验收包括最终 ZIP 解压、中文与空格路径、系统文件对话框、输入输出校验、保存失败恢复、工程重开、窗口退出及后台清理。原始报告、日志、截图及文件 SHA-256 随 [0.6.1 发行记录](https://github.com/tuantuan007/figure-workbench/releases/tag/v0.6.1) 提供；[Windows 验收运行](https://github.com/tuantuan007/figure-workbench/actions/runs/43452637043)可核对执行过程。
+验收包括最终 ZIP 解压、中文与空格路径、系统文件对话框、输入输出校验、保存失败恢复、工程重开、窗口退出及后台清理。原始报告、日志、截图及文件 SHA-256 随 [0.6.1 发行记录](https://github.com/aper-ai/figure-workbench/releases/tag/v0.6.1) 提供；[原始 Windows 验收运行](https://github.com/tuantuan007/figure-workbench/actions/runs/43452637043)可核对执行过程。
 
 原生验收环境为 Windows Server 2025。数值与流程回归主要使用已知预期值的合成数据；真实实验图像的条带候选、分割结果、染色分级及样本配对仍需结合原始数据复核。IHC 面积加权指数采用 `pixel_weighted_score`，物理测量依赖有效的像素标定。当前版本提供 CPU 模型，不包含专用纤维训练权重、自动图像配准或 FCS 流式门控。
 

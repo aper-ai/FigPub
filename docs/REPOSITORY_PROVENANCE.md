@@ -10,20 +10,28 @@ Figure Workbench 的主维护仓库为 `aper-ai/figure-workbench`。
 
 ## 软件与介绍文件
 
-迁移基线保留 0.6.1 的应用、计算、测试和打包源码。项目首页重新组织为产品定位、功能模块、实跑示例、运行方式、输入输出和验证记录；原完整说明保存在 [使用手册](USER_GUIDE.md)。
+迁移基线保留 0.6.1 的应用、计算、测试和打包源码。本轮变更涉及介绍文档、实跑截图及其来源清单，以及 Windows CI 获取基础运行时附件的发行标签。应用、算法和打包器源码仍与 `ea31f2de229d66da8d7fa331caa1f644d7027de6` 一致。项目首页重新组织为产品定位、功能模块、实跑示例、运行方式、输入输出和验证记录；原完整说明保存在 [使用手册](USER_GUIDE.md)。
 
 实跑图片来自同一提交的 Windows 验收附件，原始像素未修改。图像名称、SHA-256、尺寸、数据类型及对应场景见 [截图来源清单](screenshots/0.6.1/manifest.json)。示例数据采用合成输入，用于功能和流程展示。
 
 ## 既有发行与验证
 
-- [0.6.1 发行记录](https://github.com/tuantuan007/figure-workbench/releases/tag/v0.6.1)
-- [Windows 验收运行](https://github.com/tuantuan007/figure-workbench/actions/runs/43452637043)
+- [本仓库 0.6.1 发行镜像](https://github.com/aper-ai/figure-workbench/releases/tag/v0.6.1)
+- [原始 0.6.1 发行记录](https://github.com/tuantuan007/figure-workbench/releases/tag/v0.6.1)
+- [原始 Windows 验收运行](https://github.com/tuantuan007/figure-workbench/actions/runs/43452637043)
 - Windows 完整包 SHA-256：`66881bc4ef5578a9651a09af5aa4dd33bcc7676f8728c80e0a0ccaf247ab6a2e`
 - 验收附件 SHA-256：`fffad141737e0a4588f8424f4b6b338c6693d1281bd9887b5b3ec64b6950d25c`
 
-旧发行的验收结果对应上述源码与成品；新增的首页文档与截图不改变既有软件包。新仓库后续代码修改与发行应执行自身对应提交的验收，不能沿用旧提交的测试结论。
+0.6.1 发行镜像保留六个原始附件的文件名、字节内容和 SHA-256；其中源码包对应原验收提交，主分支另含本次文档、截图与 CI 下载标签调整。原始发行的验收结果对应上述源码与成品；本次迁移不改变既有软件包。新仓库后续代码修改与发行应执行自身对应提交的验收，不能沿用旧提交的测试结论。
 
-现有 Windows 打包流程使用经过摘要校验的 0.4.0 主包作为嵌入式 Python 基础。跨仓库运行该流程前，需在当前仓库提供同名、同摘要的构建基础附件；这一前置条件由打包程序验证。源代码运行与已发布 0.6.1 的本地使用不依赖新的构建执行。
+## Windows 构建基础
+
+现有 Windows 打包流程使用经过摘要校验的 0.4.0 主包作为嵌入式 Python 基础。原附件从[迁移前 v0.4.0 发行记录](https://github.com/tuantuan007/figure-workbench/releases/tag/v0.4.0)保留到本仓库独立的 [build-runtime-0.4.0 构建资料](https://github.com/aper-ai/figure-workbench/releases/tag/build-runtime-0.4.0)，不作为最新软件发行。
+
+- 文件名：`Figure_Workbench_0.4.0_Windows_Main.zip`
+- SHA-256：`5aac14044bbd5000f4fc31754a6bd1d08f2e9809d501393af86359cf24f03fb8`
+
+Windows CI 的 `gh release download` 从本仓库的 `build-runtime-0.4.0` 标签获取上述附件；其余构建流程、打包器和摘要校验保持不变。基础 ZIP 内部的 0.4.0 文件名与清单版本保留原值。普通用户下载 0.6.1 完整工具包，源代码运行与已发布 0.6.1 的本地使用不依赖新的构建执行。
 
 ## 许可
 

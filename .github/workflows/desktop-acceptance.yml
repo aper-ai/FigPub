@@ -90,7 +90,7 @@ jobs:
         if: ${{ !cancelled() }}
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download v0.4.0 --repo "${{ github.repository }}" --pattern Figure_Workbench_0.4.0_Windows_Main.zip --dir .ci-input
+        run: gh release download build-runtime-0.4.0 --repo "${{ github.repository }}" --pattern Figure_Workbench_0.4.0_Windows_Main.zip --dir .ci-input
       - name: Build the portable CPU component from the tested environment
         if: ${{ !cancelled() }}
         run: python packaging/build_cellpose_candidate.py --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --environment .ci-cellpose --output dist/Figure_Workbench_0.6.1_Cellpose_CPU_Windows_x64 --record test-results/portable-cellpose-build.json
