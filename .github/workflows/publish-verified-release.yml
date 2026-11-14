@@ -1,0 +1,198 @@
+name: Publish the verified 0.6.1 release
+
+# Only the owner creates this branch, at the exact commit that passed acceptance.
+# A dispatch button, tag creation, or update to main cannot run the publish job.
+# The create event explicitly covers branches created through the Git refs API.
+on:
+  create:
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish-verified-v0.6.1
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ github.event.ref_type == 'branch' && github.ref == 'refs/heads/release/validated-0.6.1' }}
+    runs-on: windows-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+
+      - name: Find the successful acceptance run for this exact commit
+        id: source
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const repository = `${context.repo.owner}/${context.repo.repo}`;
+            const branch = 'fix/interaction-lifecycle-0.6.1';
+            const path = '.github/workflows/desktop-acceptance.yml';
+            const candidates = await github.paginate(github.rest.actions.listWorkflowRuns, {
+              ...context.repo, workflow_id: 'desktop-acceptance.yml',
+              branch, head_sha: context.sha, status: 'success', per_page: 100,
+            });
+            const matching = candidates.filter(run => run.head_sha === context.sha &&
+              run.head_branch === branch && run.status === 'completed' && run.conclusion === 'success');
+            if (!matching.length) throw new Error('No successful acceptance run exists for this commit and branch.');
+            const chosen = matching.sort((a, b) => b.id - a.id)[0];
+            const {data: run} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: chosen.id});
+            const {data: workflow} = await github.rest.actions.getWorkflow({...context.repo, workflow_id: run.workflow_id});
+            if (workflow.path !== path || run.head_sha !== context.sha || run.head_branch !== branch ||
+                run.status !== 'completed' || run.conclusion !== 'success' ||
+                run.repository?.full_name !== repository || run.head_repository?.id !== context.payload.repository.id) {
+              throw new Error('The acceptance workflow/run provenance changed or belongs to another repository.');
+            }
+            const available = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
+              ...context.repo, run_id: run.id, per_page: 100,
+            });
+            const artifacts = [];
+            for (const prefix of ['acceptance-evidence', 'verified-candidate']) {
+              const name = `${prefix}-${context.sha}`;
+              const found = available.filter(item => item.name === name);
+              if (found.length !== 1) throw new Error(`Expected exactly one artifact: ${name}`);
+              const {data: artifact} = await github.rest.actions.getArtifact({...context.repo, artifact_id: found[0].id});
+              if (artifact.expired || artifact.workflow_run?.id !== run.id ||
+                  artifact.workflow_run?.head_sha !== context.sha || !/^sha256:[a-f0-9]{64}$/.test(artifact.digest || '')) {
+                throw new Error(`Artifact provenance or digest is missing: ${name}`);
+              }
+              artifacts.push(artifact);
+            }
+            await fs.mkdir('.ci-release', {recursive: true});
+            await fs.writeFile('.ci-release/github-provenance.json', JSON.stringify({
+              schema_version: 1, repository, repository_id: context.payload.repository.id,
+              workflow, run, artifacts,
+            }, null, 2) + '\n', 'utf8');
+            core.setOutput('run_id', String(run.id));
+
+      - name: Download the original artifact bytes without text conversion
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          @'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+
+          directory = Path('.ci-release')
+          provenance = json.loads((directory / 'github-provenance.json').read_text('utf-8'))
+          for artifact in provenance['artifacts']:
+              prefix = 'acceptance-evidence' if artifact['name'].startswith('acceptance-evidence-') else 'verified-candidate'
+              endpoint = f"repos/{os.environ['GITHUB_REPOSITORY']}/actions/artifacts/{int(artifact['id'])}/zip"
+              with (directory / (prefix + '.zip')).open('xb') as output:
+                  subprocess.run(['gh', 'api', endpoint], stdout=output, check=True)
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Artifact download failed.' }
+
+      - name: Recheck source, complete acceptance evidence and exact candidate files
+        env:
+          ACCEPTANCE_RUN_ID: ${{ steps.source.outputs.run_id }}
+        shell: pwsh
+        run: |
+          python scripts/prepare_verified_release.py prepare --metadata .ci-release/github-provenance.json --evidence-archive .ci-release/acceptance-evidence.zip --candidate-archive .ci-release/verified-candidate.zip --output .ci-release/prepared --repository "$env:GITHUB_REPOSITORY" --expected-commit "$env:GITHUB_SHA" --expected-run-id "$env:ACCEPTANCE_RUN_ID"
+          if ($LASTEXITCODE -ne 0) { throw 'Release preparation rejected the candidate.' }
+
+      - name: Refuse any existing tag or release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
+            if (releases.some(release => release.tag_name === 'v0.6.1'))
+              throw new Error('A release or draft for v0.6.1 already exists. It will never be overwritten.');
+            let existing;
+            try { existing = await github.rest.git.getRef({...context.repo, ref: 'tags/v0.6.1'}); }
+            catch (error) { if (error.status !== 404) throw error; }
+            if (existing) throw new Error('The v0.6.1 tag already exists. It will never be overwritten.');
+
+      - name: Create an unpublished draft with only verified attachments
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          $manifest = Get-Content -Raw -Encoding UTF8 .ci-release/prepared/upload-manifest.json | ConvertFrom-Json
+          $assets = @($manifest.assets | ForEach-Object { Join-Path .ci-release/prepared $_.path })
+          gh release create v0.6.1 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --draft --title "Figure Workbench 0.6.1 · Windows 完整工具包" --notes-file .ci-release/prepared/RELEASE_NOTES.md @assets
+          if ($LASTEXITCODE -ne 0) { throw 'Draft creation/upload failed; no existing release will be replaced.' }
+
+      - name: Fetch uploaded attachment digests and the draft tag state
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
+            const drafts = releases.filter(release => release.tag_name === 'v0.6.1');
+            if (drafts.length !== 1) throw new Error('Expected exactly one new draft release.');
+            let release;
+            for (let attempt = 0; attempt < 6; attempt++) {
+              ({data: release} = await github.rest.repos.getRelease({...context.repo, release_id: drafts[0].id}));
+              if (release.assets?.length === 6 && release.assets.every(asset =>
+                  asset.state === 'uploaded' && /^sha256:[a-f0-9]{64}$/.test(asset.digest || ''))) break;
+              if (attempt < 5) await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+            let tag;
+            try { ({data: tag} = await github.rest.git.getRef({...context.repo, ref: 'tags/v0.6.1'})); }
+            catch (error) {
+              if (error.status !== 404) throw error;
+              tag = {status: 404, exists: false, repository: `${context.repo.owner}/${context.repo.repo}`, ref: 'refs/tags/v0.6.1'};
+            }
+            await fs.writeFile('.ci-release/remote-release.json', JSON.stringify(release, null, 2) + '\n', 'utf8');
+            await fs.writeFile('.ci-release/remote-tag.json', JSON.stringify(tag, null, 2) + '\n', 'utf8');
+
+      - name: Require exact remote names, sizes, digests and target commit
+        shell: pwsh
+        run: |
+          python scripts/prepare_verified_release.py verify-upload --prepared .ci-release/prepared --release-json .ci-release/remote-release.json --tag-json .ci-release/remote-tag.json --repository "$env:GITHUB_REPOSITORY" --expected-commit "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Uploaded attachment verification failed; release remains a draft.' }
+
+      - name: Publish the verified draft as latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: pwsh
+        run: |
+          gh release edit v0.6.1 --repo "$env:GITHUB_REPOSITORY" --draft=false --latest
+          if ($LASTEXITCODE -ne 0) { throw 'Publication did not complete.' }
+          "Verified release: https://github.com/$env:GITHUB_REPOSITORY/releases/tag/v0.6.1" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Verify the published release target
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('node:fs/promises');
+            const {data: release} = await github.rest.repos.getReleaseByTag({...context.repo, tag: 'v0.6.1'});
+            const {data: tag} = await github.rest.git.getRef({...context.repo, ref: 'tags/v0.6.1'});
+            if (release.draft || release.target_commitish !== context.sha ||
+                tag.object?.type !== 'commit' || tag.object?.sha !== context.sha)
+              throw new Error('Published release target does not match the verified commit.');
+            await fs.writeFile('.ci-release/published-release.json', JSON.stringify({release, tag}, null, 2) + '\n', 'utf8');
+
+      - name: Retain publication receipts for investigation
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publication-receipts-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            .ci-release/github-provenance.json
+            .ci-release/remote-release.json
+            .ci-release/remote-tag.json
+            .ci-release/published-release.json
+            .ci-release/prepared/upload-manifest.json
+            .ci-release/prepared/upload-verification.json
+            .ci-release/prepared/RELEASE_ACCEPTANCE.json
+            .ci-release/prepared/SHA256SUMS
+            .ci-release/prepared/RELEASE_NOTES.md
+          if-no-files-found: warn
+          include-hidden-files: true
+          retention-days: 90

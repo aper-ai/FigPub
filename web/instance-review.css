@@ -1,0 +1,15 @@
+.instance-review { margin-top: 16px; }
+.instance-review .card-heading { align-items: start; gap: 16px; }
+.instance-review .card-heading p { max-width: 620px; }
+.instance-summary { display: flex; flex-wrap: wrap; gap: 10px 22px; padding: 12px 0; color: #51645b; font-size: 13px; }
+.instance-summary b { color: #203c2e; font-variant-numeric: tabular-nums; }
+.instance-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px 0; border-top: 1px solid #e5ece7; }
+.instance-toolbar .button.active { color: #fff; background: #187963; border-color: #187963; }
+.instance-instruction { color: #51645b; font-size: 13px; line-height: 1.6; margin: 10px 0; }
+.instance-error { background: #fff2ed; border-left: 3px solid #ba6945; color: #7f3f27; padding: 10px 12px; border-radius: 4px; font-size: 13px; }
+.instance-stage { overflow: auto; max-height: 540px; background: #13231c; border-radius: 8px; border: 1px solid #dfe7e1; }
+.instance-stage svg { display: block; max-width: none; height: auto; min-height: 160px; touch-action: none; cursor: crosshair; }
+.instance-downloads { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 12px 0; }
+.instance-downloads .microcopy { flex: 1 1 240px; }
+.instance-review .data-table-wrap { max-height: 280px; overflow: auto; }
+@media(max-width: 900px) { .instance-review .card-heading { flex-direction: column; } .instance-stage { max-height: 420px; } }

@@ -1,0 +1,797 @@
+{
+  "benchmark_version": 1,
+  "workbench_release": "0.3.0",
+  "synthetic_data_only": true,
+  "status": "passed",
+  "environment": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "scikit_image": "0.26.0",
+    "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+    "logical_cpu_count": 9,
+    "cpu_affinity_count": 9,
+    "process_local_thread_requests": {
+      "OMP_NUM_THREADS": "1",
+      "OPENBLAS_NUM_THREADS": "1",
+      "MKL_NUM_THREADS": "1",
+      "BLIS_NUM_THREADS": "1",
+      "NUMEXPR_NUM_THREADS": "1",
+      "VECLIB_MAXIMUM_THREADS": "1"
+    },
+    "native_thread_pool_counts_independently_verified": false,
+    "cgroup_cpu_max": null,
+    "cgroup_cpuset_effective": null,
+    "shared_host_exclusive_access": false,
+    "concurrent_other_workloads": "Unknown: this process cannot enumerate other agents' isolated processes.",
+    "load_average_scope": "Operating-system load average; it is not isolated CPU utilization or a count of competing benchmark jobs."
+  },
+  "started": {
+    "utc": "2026-11-11T15:21:42.993567+00:00",
+    "load_average_1_5_15_min": [
+      0.43848,
+      0.75146,
+      0.44141
+    ]
+  },
+  "method": {
+    "clock": "time.perf_counter wall time",
+    "warmup_calls_per_case": 1,
+    "measured_calls_per_case": 5,
+    "garbage_collection": "gc.collect before each call, outside timer",
+    "case_execution": "serial within this process; shared host not reserved",
+    "timed_scope": "Direct backend callable including its validation and result construction",
+    "excluded": [
+      "fixture generation",
+      "post-call correctness checks",
+      "input/result hashes",
+      "JSON report serialization",
+      "source-file decoding",
+      "HTTP",
+      "browser",
+      "export rendering"
+    ],
+    "immutability": "Read-only NumPy inputs plus before/after SHA-256 of all arrays and parameters/base results",
+    "determinism": "Full result SHA-256 across warmup and every repeat, excluding elapsed_ms fields"
+  },
+  "caveats": [
+    "No upstream comparison or speedup claim is supported by this report.",
+    "These are synthetic throughput and invariant checks, not biological validation or diagnostic accuracy.",
+    "Timings are Linux backend wall times, not Windows EXE startup, whole UI interaction or end-to-end import/export times.",
+    "Other agents or host processes may run concurrently; host isolation prevents a complete process inventory. Load averages are recorded, not treated as proof of an idle host.",
+    "One warmup and five or fewer repeats describe this run only; they do not estimate reliable production tail latency.",
+    "Thread environment settings are requests; native thread pools were not independently enumerated.",
+    "The fiber cases consume explicit supplied instance labels. Neural model inference and automatic segmentation accuracy are outside these timings."
+  ],
+  "source_sha256": {
+    "workbench/wb_workflow.py": "81fab9931ec684991beda883ab4e746974cffa3de13bbdb34b13e85d7a7402c9",
+    "workbench/histology.py": "86dd4f950100d9002d19f4925d6c60603189971d8a6608d22523770e0d5d0a2e",
+    "workbench/fibers.py": "d434d389380023c871b2ece2564eaec901e657742f4e5b94144d31f6fdfee2eb",
+    "workbench/instances.py": "517b8187a277ea8790e61cbb124fe0da861d7dd61c615e0955cbe535749985a0",
+    "workbench/analysis.py": "c078a4f976f69c9a87ed12a0af9246c1b6f7628738030af56a2c07f15dbd7c6f",
+    "workbench/microscopy.py": "d2650d6f81f09bf7aef555320fb2d11a212e0910a52a859402011b97eb1be038",
+    "workbench/microscopy_measurements.py": "a7a21bd7b5b0ca7ba2b782ca73c5111ce1f5094e743ac5c86dc7b5ae7abb776c",
+    "benchmarks/benchmark_workflows.py": "53bb573cf1c2329dbb78ff4c70648587a97f340c4a3dd79c8f762b4899e72f6b"
+  },
+  "cases": [
+    {
+      "case": "wb_exposure_quality",
+      "title": "WB: 12 original planes, 144 ROIs, 3 exposures, one complete cohort",
+      "input": {
+        "source_planes": 12,
+        "plane_shape_yx": [
+          512,
+          768
+        ],
+        "roi_shape_yx": [
+          36,
+          80
+        ],
+        "roi_count": 144,
+        "roi_pixels_measured": 414720,
+        "synthetic_biological_ids": 24,
+        "groups": 2,
+        "exposures": 3,
+        "roles": [
+          "target",
+          "control"
+        ]
+      },
+      "arrays": {
+        "synthetic-0-weak": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "ae8d806ef17f83b08b56c54b32e2b65e1657c673cd707ea3adb675bf8f5992a6",
+          "writeable": false
+        },
+        "synthetic-1-weak": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "ae8d806ef17f83b08b56c54b32e2b65e1657c673cd707ea3adb675bf8f5992a6",
+          "writeable": false
+        },
+        "synthetic-2-weak": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "ae8d806ef17f83b08b56c54b32e2b65e1657c673cd707ea3adb675bf8f5992a6",
+          "writeable": false
+        },
+        "synthetic-3-weak": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "ae8d806ef17f83b08b56c54b32e2b65e1657c673cd707ea3adb675bf8f5992a6",
+          "writeable": false
+        },
+        "synthetic-0-usable": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "2e242c417580d7990b49467091d51934dafcd0256bef5d6b15f5f6b102629c37",
+          "writeable": false
+        },
+        "synthetic-1-usable": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "2e242c417580d7990b49467091d51934dafcd0256bef5d6b15f5f6b102629c37",
+          "writeable": false
+        },
+        "synthetic-2-usable": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "2e242c417580d7990b49467091d51934dafcd0256bef5d6b15f5f6b102629c37",
+          "writeable": false
+        },
+        "synthetic-3-usable": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "2e242c417580d7990b49467091d51934dafcd0256bef5d6b15f5f6b102629c37",
+          "writeable": false
+        },
+        "synthetic-0-clipped": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "5e7938090db74dc6a04edde8a76b18236db02c93c3d710c1064a6c9bc3281606",
+          "writeable": false
+        },
+        "synthetic-1-clipped": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "5e7938090db74dc6a04edde8a76b18236db02c93c3d710c1064a6c9bc3281606",
+          "writeable": false
+        },
+        "synthetic-2-clipped": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "5e7938090db74dc6a04edde8a76b18236db02c93c3d710c1064a6c9bc3281606",
+          "writeable": false
+        },
+        "synthetic-3-clipped": {
+          "shape": [
+            512,
+            768
+          ],
+          "dtype": "uint16",
+          "nbytes": 786432,
+          "sha256_before_and_after": "deab1def3218a6f81f28fd31ac8fc42fa76084fdc93ae4df5e18500310a024b3",
+          "writeable": false
+        }
+      },
+      "total_protected_array_bytes": 9437184,
+      "warmup_calls": 1,
+      "warmup_excluded_ms": 14.712,
+      "measured_calls": 5,
+      "samples_ms": [
+        14.351,
+        14.176,
+        13.946,
+        13.731,
+        15.735
+      ],
+      "median_ms": 14.176,
+      "min_ms": 13.731,
+      "max_ms": 15.735,
+      "correctness": {
+        "all_assertions_passed": true,
+        "original_arrays_unchanged": true,
+        "parameters_and_base_results_unchanged": true,
+        "all_warmup_and_measured_results_identical_except_elapsed_ms": true,
+        "stable_result_sha256": "ed802983e822dd457c20721fae4faf65358c8eee8dcc0bc558383ca051432725",
+        "verified_output": {
+          "measured_rois": 144,
+          "logical_measurements": 48,
+          "recommended_pair_id": "usable",
+          "included_rois": 48,
+          "weak_and_clipped_rejected": true,
+          "selection_not_applied": true
+        }
+      },
+      "load_before": {
+        "utc": "2026-11-11T15:21:43.291214+00:00",
+        "load_average_1_5_15_min": [
+          0.43848,
+          0.75146,
+          0.44141
+        ]
+      },
+      "load_after": {
+        "utc": "2026-11-11T15:21:43.442526+00:00",
+        "load_average_1_5_15_min": [
+          0.43848,
+          0.75146,
+          0.44141
+        ]
+      }
+    },
+    {
+      "case": "ihc_fixed_manual_grades",
+      "title": "IHC: 1024² native uint8 RGB, fixed H/DAB, manual OD grades",
+      "input": {
+        "shape_yxc": [
+          1024,
+          1024,
+          3
+        ],
+        "native_dtype": "uint8",
+        "tissue_pixels": 984064,
+        "expected_grade_counts": [
+          238080,
+          267210,
+          267191,
+          211583
+        ],
+        "stain_method": "fixed",
+        "grading_method": "manual",
+        "grade_thresholds_natural_log_od": [
+          0.15,
+          0.5,
+          0.85
+        ],
+        "synthetic_pure_stain_strips": true
+      },
+      "arrays": {
+        "original_rgb": {
+          "shape": [
+            1024,
+            1024,
+            3
+          ],
+          "dtype": "uint8",
+          "nbytes": 3145728,
+          "sha256_before_and_after": "a3a224457eb1ca10afa7b36f94de3c55dbab8acadeba82ad62001b37f6f98c15",
+          "writeable": false
+        }
+      },
+      "total_protected_array_bytes": 3145728,
+      "warmup_calls": 1,
+      "warmup_excluded_ms": 72.002,
+      "measured_calls": 5,
+      "samples_ms": [
+        52.108,
+        92.902,
+        68.175,
+        55.809,
+        54.153
+      ],
+      "median_ms": 55.809,
+      "min_ms": 52.108,
+      "max_ms": 92.902,
+      "correctness": {
+        "all_assertions_passed": true,
+        "original_arrays_unchanged": true,
+        "parameters_and_base_results_unchanged": true,
+        "all_warmup_and_measured_results_identical_except_elapsed_ms": true,
+        "stable_result_sha256": "28f0d9649e3c682d0953b61fae90841ad3305fa684c3de0e9c37b717c93a127d",
+        "verified_output": {
+          "tissue_pixels": 984064,
+          "grade_counts": [
+            238080,
+            267210,
+            267191,
+            211583
+          ],
+          "known_grade_counts_exact": true,
+          "stain_estimation": {
+            "algorithm": "standard_H_DAB_vectors"
+          },
+          "stain_reference_cosines": [
+            1.0,
+            0.9999999999999999
+          ],
+          "pixel_weighted_score": 145.9601204799688
+        }
+      },
+      "load_before": {
+        "utc": "2026-11-11T15:21:43.448877+00:00",
+        "load_average_1_5_15_min": [
+          0.43848,
+          0.75146,
+          0.44141
+        ]
+      },
+      "load_after": {
+        "utc": "2026-11-11T15:21:43.955673+00:00",
+        "load_average_1_5_15_min": [
+          0.43848,
+          0.75146,
+          0.44141
+        ]
+      }
+    },
+    {
+      "case": "ihc_macenko_manual_grades",
+      "title": "IHC: 1024² native uint8 RGB, macenko H/DAB, manual OD grades",
+      "input": {
+        "shape_yxc": [
+          1024,
+          1024,
+          3
+        ],
+        "native_dtype": "uint8",
+        "tissue_pixels": 984064,
+        "expected_grade_counts": [
+          238080,
+          267210,
+          267191,
+          211583
+        ],
+        "stain_method": "macenko",
+        "grading_method": "manual",
+        "grade_thresholds_natural_log_od": [
+          0.15,
+          0.5,
+          0.85
+        ],
+        "synthetic_pure_stain_strips": true
+      },
+      "arrays": {
+        "original_rgb": {
+          "shape": [
+            1024,
+            1024,
+            3
+          ],
+          "dtype": "uint8",
+          "nbytes": 3145728,
+          "sha256_before_and_after": "a3a224457eb1ca10afa7b36f94de3c55dbab8acadeba82ad62001b37f6f98c15",
+          "writeable": false
+        }
+      },
+      "total_protected_array_bytes": 3145728,
+      "warmup_calls": 1,
+      "warmup_excluded_ms": 65.215,
+      "measured_calls": 5,
+      "samples_ms": [
+        68.151,
+        68.165,
+        64.622,
+        73.193,
+        64.56
+      ],
+      "median_ms": 68.151,
+      "min_ms": 64.56,
+      "max_ms": 73.193,
+      "correctness": {
+        "all_assertions_passed": true,
+        "original_arrays_unchanged": true,
+        "parameters_and_base_results_unchanged": true,
+        "all_warmup_and_measured_results_identical_except_elapsed_ms": true,
+        "stable_result_sha256": "2ef2c72ff238e1fca6100c5ad4a7e97d54a6655a03e89f7ba28bcabe3bbe55c6",
+        "verified_output": {
+          "tissue_pixels": 984064,
+          "grade_counts": [
+            238080,
+            267210,
+            267191,
+            211583
+          ],
+          "known_grade_counts_exact": true,
+          "stain_estimation": {
+            "algorithm": "macenko_angular_extremes",
+            "sample_count": 98407,
+            "sample_stride": 10,
+            "sampled": true,
+            "angle_percentile": 1.0,
+            "plane_variance_fraction": 0.9999722000895438,
+            "ordering": "maximum_cosine_assignment_to_H_DAB_references",
+            "assignment_margin": 0.4043212690114648
+          },
+          "stain_reference_cosines": [
+            0.999998656532949,
+            0.9999989139966362
+          ],
+          "pixel_weighted_score": 145.9601204799688
+        }
+      },
+      "load_before": {
+        "utc": "2026-11-11T15:21:43.958981+00:00",
+        "load_average_1_5_15_min": [
+          0.43848,
+          0.75146,
+          0.44141
+        ]
+      },
+      "load_after": {
+        "utc": "2026-11-11T15:21:44.479026+00:00",
+        "load_average_1_5_15_min": [
+          0.43848,
+          0.75146,
+          0.44141
+        ]
+      }
+    },
+    {
+      "case": "fiber_labels_and_nuclei",
+      "title": "Fibers: 1024² labels, 64 fibers, 208 nuclei, anisotropic geometry and marker",
+      "input": {
+        "plane_shape_yx": [
+          1024,
+          1024
+        ],
+        "original_planes": 4,
+        "fiber_count": 64,
+        "nucleus_count": 208,
+        "outside_nuclei": 16,
+        "marker_channels": 1,
+        "calibration_um_per_px_xy": [
+          0.5,
+          0.75
+        ],
+        "labels_imported_not_inferred": true
+      },
+      "arrays": {
+        "f": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "3da8235680157eeecb041e6a07ae81b58d431946f89ff1081fec112167961b2e",
+          "writeable": false
+        },
+        "l": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "9fc12dbf29b08be8d8b2525d49f80c304693a731ee29815e6622b024055a6344",
+          "writeable": false
+        },
+        "n": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "9295cf8b63fde6e907d775b0484b738702ce72abbe137e26a360e5de4c331a08",
+          "writeable": false
+        },
+        "m": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "cac207507ae167acab850a42a86a33a5eb8f7538c61b4b9024a19badc4c7447d",
+          "writeable": false
+        }
+      },
+      "total_protected_array_bytes": 8388608,
+      "warmup_calls": 1,
+      "warmup_excluded_ms": 587.332,
+      "measured_calls": 5,
+      "samples_ms": [
+        493.76,
+        504.57,
+        453.824,
+        440.026,
+        510.5
+      ],
+      "median_ms": 493.76,
+      "min_ms": 440.026,
+      "max_ms": 510.5,
+      "correctness": {
+        "all_assertions_passed": true,
+        "original_arrays_unchanged": true,
+        "parameters_and_base_results_unchanged": true,
+        "all_warmup_and_measured_results_identical_except_elapsed_ms": true,
+        "stable_result_sha256": "4c5abce1f9cfeb17439e68d3959c4bdddaef6cc5efa55fff43ecba94295dad13",
+        "verified_output": {
+          "fiber_count": 64,
+          "total_area_px": 256576,
+          "raw_integrated_intensity": 1324573600,
+          "nuclei_total": 208,
+          "nuclei_assigned": 192,
+          "nuclei_outside": 16,
+          "nuclei_uncertain": 0,
+          "nucleus_1_owner": 1,
+          "exact_label_mask_preserved": true
+        }
+      },
+      "load_before": {
+        "utc": "2026-11-11T15:21:44.485043+00:00",
+        "load_average_1_5_15_min": [
+          0.43848,
+          0.75146,
+          0.44141
+        ]
+      },
+      "load_after": {
+        "utc": "2026-11-11T15:21:47.723951+00:00",
+        "load_average_1_5_15_min": [
+          0.48389,
+          0.75586,
+          0.44482
+        ]
+      }
+    },
+    {
+      "case": "fiber_edited_labels_recompute",
+      "title": "Fibers: 1024² edited labels, 65 fibers, nuclear reassignment and full remeasurement",
+      "input": {
+        "plane_shape_yx": [
+          1024,
+          1024
+        ],
+        "original_planes": 4,
+        "fiber_count": 64,
+        "nucleus_count": 208,
+        "outside_nuclei": 16,
+        "marker_channels": 1,
+        "calibration_um_per_px_xy": [
+          0.5,
+          0.75
+        ],
+        "labels_imported_not_inferred": true,
+        "edited_fiber_count": 65,
+        "edit": "Left half of fiber 1 relabelled 1001; original source labels preserved."
+      },
+      "arrays": {
+        "f": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "3da8235680157eeecb041e6a07ae81b58d431946f89ff1081fec112167961b2e",
+          "writeable": false
+        },
+        "l": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "9fc12dbf29b08be8d8b2525d49f80c304693a731ee29815e6622b024055a6344",
+          "writeable": false
+        },
+        "n": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "9295cf8b63fde6e907d775b0484b738702ce72abbe137e26a360e5de4c331a08",
+          "writeable": false
+        },
+        "m": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "cac207507ae167acab850a42a86a33a5eb8f7538c61b4b9024a19badc4c7447d",
+          "writeable": false
+        },
+        "edited_labels": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "a498f448fc2d2c6950e97f7b3e38a91c0a6cc48d785f6985fc3af8d282a8890f",
+          "writeable": false
+        }
+      },
+      "total_protected_array_bytes": 10485760,
+      "warmup_calls": 1,
+      "warmup_excluded_ms": 397.288,
+      "measured_calls": 5,
+      "samples_ms": [
+        388.464,
+        431.791,
+        410.185,
+        426.39,
+        403.764
+      ],
+      "median_ms": 410.185,
+      "min_ms": 388.464,
+      "max_ms": 431.791,
+      "correctness": {
+        "all_assertions_passed": true,
+        "original_arrays_unchanged": true,
+        "parameters_and_base_results_unchanged": true,
+        "all_warmup_and_measured_results_identical_except_elapsed_ms": true,
+        "stable_result_sha256": "fcdbd9cd521233832d7bada8c62ed41e5a7c7903068ddcbd4ebddec2da035c85",
+        "verified_output": {
+          "fiber_count": 65,
+          "total_area_px": 256576,
+          "raw_integrated_intensity": 1324573600,
+          "nuclei_total": 208,
+          "nuclei_assigned": 192,
+          "nuclei_outside": 16,
+          "nuclei_uncertain": 0,
+          "nucleus_1_owner": 1001,
+          "exact_label_mask_preserved": true
+        }
+      },
+      "load_before": {
+        "utc": "2026-11-11T15:21:47.733210+00:00",
+        "load_average_1_5_15_min": [
+          0.48389,
+          0.75586,
+          0.44482
+        ]
+      },
+      "load_after": {
+        "utc": "2026-11-11T15:21:50.471866+00:00",
+        "load_average_1_5_15_min": [
+          0.48389,
+          0.75586,
+          0.44482
+        ]
+      }
+    },
+    {
+      "case": "instance_split_merge_replay",
+      "title": "Instances: 1024² existing lossless result, two-seed split and merge replay",
+      "input": {
+        "plane_shape_yx": [
+          1024,
+          1024
+        ],
+        "initial_instances": 2,
+        "operation_count": 2,
+        "split_object_area_px": 102400,
+        "foreground_area_px": 192400,
+        "includes": [
+          "decode base mask",
+          "copy labels",
+          "two-seed geodesic split",
+          "merge",
+          "raw intensity remeasurement",
+          "encode result mask"
+        ]
+      },
+      "arrays": {
+        "original_raw": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint16",
+          "nbytes": 2097152,
+          "sha256_before_and_after": "b2b280d01abcb68b5374aa73490d0f1e1afe8ff72c4e9e9ac8f10789eedf53ba",
+          "writeable": false
+        },
+        "original_labels": {
+          "shape": [
+            1024,
+            1024
+          ],
+          "dtype": "uint32",
+          "nbytes": 4194304,
+          "sha256_before_and_after": "c19081cbc84023dfbd9449562c48509798e16f4a491b615fe734ef7f8ede64db",
+          "writeable": false
+        }
+      },
+      "total_protected_array_bytes": 6291456,
+      "warmup_calls": 1,
+      "warmup_excluded_ms": 86.554,
+      "measured_calls": 5,
+      "samples_ms": [
+        107.233,
+        74.092,
+        70.073,
+        78.711,
+        71.28
+      ],
+      "median_ms": 74.092,
+      "min_ms": 70.073,
+      "max_ms": 107.233,
+      "correctness": {
+        "all_assertions_passed": true,
+        "original_arrays_unchanged": true,
+        "parameters_and_base_results_unchanged": true,
+        "all_warmup_and_measured_results_identical_except_elapsed_ms": true,
+        "stable_result_sha256": "92d62c12cd6d3c4578fca6493520ce0c32f6988d40bb611753423eb363ffb6af",
+        "verified_output": {
+          "initial_instances": 2,
+          "instances_after_split": 3,
+          "instances_after_merge": 2,
+          "replayed_operations": 2,
+          "foreground_area_px": 192400,
+          "raw_integrated_intensity": 1921764400,
+          "exact_original_label_mask_restored": true
+        }
+      },
+      "load_before": {
+        "utc": "2026-11-11T15:21:50.480829+00:00",
+        "load_average_1_5_15_min": [
+          0.48389,
+          0.75586,
+          0.44482
+        ]
+      },
+      "load_after": {
+        "utc": "2026-11-11T15:21:51.136160+00:00",
+        "load_average_1_5_15_min": [
+          0.52539,
+          0.76025,
+          0.44824
+        ]
+      }
+    }
+  ],
+  "finished": {
+    "utc": "2026-11-11T15:21:51.139676+00:00",
+    "load_average_1_5_15_min": [
+      0.52539,
+      0.76025,
+      0.44824
+    ]
+  }
+}

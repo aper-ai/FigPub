@@ -1,0 +1,72 @@
+{
+  "version": "0.3.0",
+  "build": "windows-x64-portable-3",
+  "recorded_at_utc": "2026-11-11T15:24:55.307839+00:00",
+  "status": "assembled_static_checks_passed",
+  "distribution": "core_with_optional_cellpose_cpu",
+  "windows_runtime_executed": false,
+  "base_release_verification": {
+    "main_zip_sha256": "769abacbc8723433cf8b96374b8e7c1f11d7a5f1c5ee47a874a4b41a5554eb43",
+    "component_zip_sha256": "c758c1c8c80fe3d37b59980b5928cf2e50e1b144c83845f9c87eb1a2fff71b11",
+    "prior_manifest_sha256": "f325cbfcba2f953fb595249dec8f8ecfd38f7052b378b0288def0254cc9d3375",
+    "individual_files_verified": 24410,
+    "zip_crc_and_file_sha256_verified": true,
+    "retained_runtime_license_files": 6894,
+    "retained_files_byte_identical": true
+  },
+  "native_launcher": {
+    "path": "FigureWorkbench.exe",
+    "bytes": 174592,
+    "sha256": "fdd50a4ab217ccbc39ad45a551099bdf881ef5faf58d5b3d70685f32d6f2df24",
+    "machine_hex": "0x8664",
+    "format": "PE32+",
+    "windows_runtime_executed": false
+  },
+  "dependencies": {
+    "core_count": 44,
+    "current_requirements_and_windows_markers_verified": true,
+    "runtime_unchanged_from_verified_base": true,
+    "wheel_record_verification": "Performed in the original build; full installed files rehashed in this build."
+  },
+  "pe_architecture_scan": {
+    "binaries": 328,
+    "machine_counts": {
+      "0x8664": 328
+    },
+    "scope": "Main package launcher and all core .exe/.dll/.pyd files",
+    "full_dll_import_closure_checked": false
+  },
+  "optional_cellpose_component": {
+    "component_version": "0.2.0",
+    "compatible_application_versions": [
+      "0.2.0",
+      "0.3.0"
+    ],
+    "bundled_in_main_archive": false,
+    "archive": "Figure_Workbench_0.2.0_Cellpose_CPU.zip",
+    "archive_sha256": "c758c1c8c80fe3d37b59980b5928cf2e50e1b144c83845f9c87eb1a2fff71b11",
+    "verified_files": 17373,
+    "manifest_sha256": "6c943b430c7e4193c2d370d0b340a85e1e4f066429ec0d643109fbe6f30536e7",
+    "files_modified": false,
+    "dependency_count": 24,
+    "models": {
+      "cyto3": "2dc3087a8abd7da46d1ab0ddd5824639933cc3ff63b382af3fa1939a392db93c",
+      "nucleitorch_0": "89ca45e4a45048d5010d29621466b1274b91b3dcb9714dce9f9e90a9a8671303"
+    },
+    "install": "Place the existing cellpose directory beside FigureWorkbench.exe; keep its provenance files.",
+    "windows_runtime_executed": false
+  },
+  "source_files": 193,
+  "test_records": {
+    "application": "app/benchmarks/validation.json",
+    "documentation": "app/docs/VALIDATION.md",
+    "execution_platform": "Linux",
+    "tests_executed_by_this_builder": false
+  },
+  "limitations": [
+    "Windows startup, browser association, font and Office rendering have not been executed.",
+    "Static architecture and byte checks do not prove Windows DLL import closure.",
+    "Optional imagecodecs HEIF/JPEG-XS/Jetraw codecs are not supplied.",
+    "Official Cellpose CPU models are a separate unchanged optional component."
+  ]
+}

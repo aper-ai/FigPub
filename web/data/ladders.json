@@ -1,0 +1,1390 @@
+{
+  "source": "poplarity/GelFigure/js/ladders.js",
+  "license": "MIT",
+  "note": "Catalogue data only; recognition/calibration algorithms independently rebuilt. Verify your exact gel chemistry and manufacturer datasheet.",
+  "ladders": [
+    {
+      "kind": "dna",
+      "id": "gr1kb",
+      "name": "Thermo GeneRuler 1 kb (SM0311)",
+      "sizes": [
+        10000,
+        8000,
+        6000,
+        5000,
+        4000,
+        3500,
+        3000,
+        2500,
+        2000,
+        1500,
+        1000,
+        750,
+        500,
+        250
+      ],
+      "ref": [
+        6000,
+        3000,
+        1000
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "gr1kbplus",
+      "name": "Thermo GeneRuler 1 kb Plus (SM1331)",
+      "sizes": [
+        20000,
+        10000,
+        7000,
+        5000,
+        4000,
+        3000,
+        2000,
+        1500,
+        1000,
+        700,
+        500,
+        400,
+        300,
+        200,
+        75
+      ],
+      "ref": [
+        5000,
+        1500,
+        500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "gr100plus",
+      "name": "Thermo GeneRuler 100 bp Plus (SM0321)",
+      "sizes": [
+        3000,
+        2000,
+        1500,
+        1200,
+        1000,
+        900,
+        800,
+        700,
+        600,
+        500,
+        400,
+        300,
+        200,
+        100
+      ],
+      "ref": [
+        1000,
+        500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "gr100",
+      "name": "Thermo GeneRuler 100 bp (SM0241)",
+      "sizes": [
+        1000,
+        900,
+        800,
+        700,
+        600,
+        500,
+        400,
+        300,
+        200,
+        100
+      ],
+      "ref": [
+        500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "gr50",
+      "name": "Thermo GeneRuler 50 bp (SM0371)",
+      "sizes": [
+        1000,
+        900,
+        800,
+        700,
+        600,
+        500,
+        400,
+        300,
+        250,
+        200,
+        150,
+        100,
+        50
+      ],
+      "ref": [
+        500,
+        250
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "grmix",
+      "name": "Thermo GeneRuler DNA Ladder Mix (SM0331)",
+      "sizes": [
+        10000,
+        8000,
+        6000,
+        5000,
+        4000,
+        3500,
+        3000,
+        2500,
+        2000,
+        1500,
+        1200,
+        1000,
+        900,
+        800,
+        700,
+        600,
+        500,
+        400,
+        300,
+        200,
+        100
+      ],
+      "ref": [
+        3000,
+        1000,
+        500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "grlow",
+      "name": "Thermo GeneRuler Low Range (SM1191)",
+      "sizes": [
+        700,
+        500,
+        400,
+        300,
+        200,
+        150,
+        100,
+        75,
+        50,
+        25
+      ],
+      "ref": [
+        300,
+        100
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "grulow",
+      "name": "Thermo GeneRuler Ultra Low Range (SM1211)",
+      "sizes": [
+        300,
+        200,
+        150,
+        100,
+        75,
+        50,
+        35,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        50
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "grexpress",
+      "name": "Thermo GeneRuler Express (SM1553)",
+      "sizes": [
+        5000,
+        3000,
+        2000,
+        1500,
+        1000,
+        750,
+        500,
+        300,
+        100
+      ],
+      "ref": [
+        1500,
+        500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "neb1kb",
+      "name": "NEB 1 kb DNA Ladder (N3232)",
+      "sizes": [
+        10000,
+        8000,
+        6000,
+        5000,
+        4000,
+        3000,
+        2000,
+        1500,
+        1000,
+        500
+      ],
+      "ref": [
+        3000
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "neb100",
+      "name": "NEB 100 bp DNA Ladder (N3231)",
+      "sizes": [
+        1517,
+        1200,
+        1000,
+        900,
+        800,
+        700,
+        600,
+        500,
+        400,
+        300,
+        200,
+        100
+      ],
+      "ref": [
+        1000,
+        500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "neb1kbplus",
+      "name": "NEB 1 kb Plus DNA Ladder (N3200)",
+      "sizes": [
+        10000,
+        8000,
+        6000,
+        5000,
+        4000,
+        3000,
+        2000,
+        1500,
+        1200,
+        1000,
+        900,
+        800,
+        700,
+        600,
+        500,
+        400,
+        300,
+        200,
+        100
+      ],
+      "ref": [
+        3000,
+        1000,
+        500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "dl2000",
+      "name": "Takara DL2000 (3427A)",
+      "sizes": [
+        2000,
+        1000,
+        750,
+        500,
+        250,
+        100
+      ],
+      "ref": [
+        750
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "dl5000",
+      "name": "Takara DL5000 (3428A)",
+      "sizes": [
+        5000,
+        3000,
+        2000,
+        1500,
+        1000,
+        750,
+        500,
+        250,
+        100
+      ],
+      "ref": [
+        1000
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "dl15000",
+      "name": "Takara DL15000 (3582A)",
+      "sizes": [
+        15000,
+        10000,
+        7500,
+        5000,
+        2500,
+        1000,
+        250
+      ],
+      "ref": []
+    },
+    {
+      "kind": "dna",
+      "id": "trans2k",
+      "name": "TransGen Trans2K (BM101)",
+      "sizes": [
+        2000,
+        1000,
+        750,
+        500,
+        250,
+        100
+      ],
+      "ref": [
+        750
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "trans2kplus",
+      "name": "TransGen Trans2K Plus (BM111)",
+      "sizes": [
+        5000,
+        3000,
+        2000,
+        1000,
+        750,
+        500,
+        250,
+        100
+      ],
+      "ref": [
+        750
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "trans2kplus2",
+      "name": "TransGen Trans2K Plus II (BM121)",
+      "sizes": [
+        8000,
+        5000,
+        3000,
+        2000,
+        1000,
+        750,
+        500,
+        250,
+        100
+      ],
+      "ref": [
+        750
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "trans5k",
+      "name": "TransGen Trans5K",
+      "sizes": [
+        5000,
+        3000,
+        2000,
+        1500,
+        1000,
+        800,
+        500,
+        300
+      ],
+      "ref": [
+        1500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "trans15k",
+      "name": "TransGen Trans15K (BM161)",
+      "sizes": [
+        15000,
+        10000,
+        7500,
+        5000,
+        3000,
+        1500,
+        1000,
+        500
+      ],
+      "ref": [
+        5000
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "tiangen2000",
+      "name": "Tiangen Marker D2000 (MD114)",
+      "sizes": [
+        2000,
+        1000,
+        750,
+        500,
+        250,
+        100
+      ],
+      "ref": [
+        750
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "yeasen1kb",
+      "name": "Yeasen GoldBand 1 kb (10510ES)",
+      "sizes": [
+        12000,
+        8000,
+        6000,
+        5000,
+        4000,
+        3000,
+        2500,
+        2000,
+        1500,
+        1000,
+        750,
+        500,
+        250
+      ],
+      "ref": [
+        4000,
+        1500
+      ]
+    },
+    {
+      "kind": "dna",
+      "id": "yeasen100plus",
+      "name": "Yeasen GoldBand 100 bp Plus (10516ES)",
+      "sizes": [
+        3000,
+        2000,
+        1500,
+        1200,
+        1000,
+        900,
+        800,
+        700,
+        600,
+        500,
+        400,
+        300,
+        200,
+        100
+      ],
+      "ref": [
+        1200,
+        500
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "biorad_dual",
+      "name": "Bio-Rad Precision Plus Dual Color (161-0374)",
+      "sizes": [
+        250,
+        150,
+        100,
+        75,
+        50,
+        37,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        75,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "biorad_allblue",
+      "name": "Bio-Rad Precision Plus All Blue (161-0373)",
+      "sizes": [
+        250,
+        150,
+        100,
+        75,
+        50,
+        37,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        75,
+        50,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "biorad_kaleido",
+      "name": "Bio-Rad Precision Plus Kaleidoscope (161-0375)",
+      "sizes": [
+        250,
+        150,
+        100,
+        75,
+        50,
+        37,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        150,
+        75,
+        37,
+        25,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "biorad_unstained",
+      "name": "Bio-Rad Precision Plus Unstained (161-0363)",
+      "sizes": [
+        250,
+        150,
+        100,
+        75,
+        50,
+        37,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        75,
+        50,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "biorad_dualxtra",
+      "name": "Bio-Rad Precision Plus Dual Xtra (161-0377)",
+      "sizes": [
+        250,
+        150,
+        100,
+        75,
+        50,
+        37,
+        25,
+        20,
+        15,
+        10,
+        5,
+        2
+      ],
+      "ref": [
+        75,
+        25,
+        2
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26616",
+      "name": "Thermo PageRuler Prestained 10–180 kDa (26616)",
+      "sizes": [
+        180,
+        130,
+        100,
+        70,
+        55,
+        40,
+        35,
+        25,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26619",
+      "name": "Thermo PageRuler Plus Prestained 10–250 kDa (26619)",
+      "sizes": [
+        250,
+        130,
+        100,
+        70,
+        55,
+        35,
+        25,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26614",
+      "name": "Thermo PageRuler Unstained 10–200 kDa (26614)",
+      "sizes": [
+        200,
+        150,
+        120,
+        100,
+        85,
+        70,
+        60,
+        50,
+        40,
+        30,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        50
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26610",
+      "name": "Thermo Pierce Unstained Protein MW Marker 14.4–116 kDa (26610)",
+      "sizes": [
+        116,
+        66.2,
+        45,
+        35,
+        25,
+        18.4,
+        14.4
+      ],
+      "ref": []
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26632",
+      "name": "Thermo PageRuler Unstained Low Range 3.4–100 kDa (26632, Tricine)",
+      "sizes": [
+        100,
+        30,
+        25,
+        20,
+        15,
+        10,
+        5,
+        3.4
+      ],
+      "ref": [
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26634",
+      "name": "Thermo Spectra Multicolor Broad Range (26634)",
+      "sizes": [
+        260,
+        140,
+        100,
+        70,
+        50,
+        40,
+        35,
+        25,
+        15,
+        10
+      ],
+      "ref": [
+        260,
+        70,
+        50,
+        40,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26625",
+      "name": "Thermo Spectra Multicolor High Range (26625)",
+      "sizes": [
+        300,
+        250,
+        180,
+        130,
+        100,
+        70,
+        50,
+        40
+      ],
+      "ref": [
+        300,
+        70,
+        50
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "thermo_26628",
+      "name": "Thermo Spectra Multicolor Low Range (26628, Tricine)",
+      "sizes": [
+        40,
+        25,
+        15,
+        10,
+        4.6,
+        1.7
+      ],
+      "ref": [
+        40,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "novex_lc5800",
+      "name": "Invitrogen Novex Sharp Pre-stained (LC5800)",
+      "sizes": [
+        260,
+        160,
+        110,
+        80,
+        60,
+        50,
+        40,
+        30,
+        20,
+        15,
+        10,
+        3.5
+      ],
+      "ref": []
+    },
+    {
+      "kind": "protein",
+      "id": "seeblue_lc5925",
+      "name": "Invitrogen SeeBlue Plus2 (LC5925, Tris-glycine values)",
+      "sizes": [
+        250,
+        148,
+        98,
+        64,
+        50,
+        36,
+        22,
+        16,
+        6,
+        4
+      ],
+      "ref": []
+    },
+    {
+      "kind": "protein",
+      "id": "neb_p7719",
+      "name": "NEB Color Prestained Broad Range (P7719)",
+      "sizes": [
+        250,
+        180,
+        130,
+        95,
+        72,
+        55,
+        43,
+        34,
+        26,
+        17,
+        10
+      ],
+      "ref": [
+        72,
+        26
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "neb_p7717",
+      "name": "NEB Unstained Broad Range (P7717)",
+      "sizes": [
+        200,
+        150,
+        100,
+        85,
+        70,
+        60,
+        50,
+        40,
+        30,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": []
+    },
+    {
+      "kind": "protein",
+      "id": "abcam_ab116028",
+      "name": "Abcam Prestained Broad Range (ab116028, Tris-glycine values)",
+      "sizes": [
+        245,
+        180,
+        135,
+        100,
+        75,
+        63,
+        48,
+        35,
+        25,
+        20,
+        17,
+        11
+      ],
+      "ref": [
+        75,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "genscript_m00624",
+      "name": "GenScript Broad Multi Color (M00624)",
+      "sizes": [
+        270,
+        175,
+        130,
+        95,
+        65,
+        50,
+        35,
+        30,
+        15,
+        10
+      ],
+      "ref": [
+        270,
+        50,
+        30
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "yeasen_p180",
+      "name": "Yeasen GoldBand Plus 3-color 10–180 kDa (26616ES)",
+      "sizes": [
+        180,
+        130,
+        100,
+        70,
+        55,
+        40,
+        35,
+        25,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "epizyme_wj101",
+      "name": "Epizyme 15–150 kDa (WJ101)",
+      "sizes": [
+        150,
+        100,
+        70,
+        50,
+        40,
+        35,
+        25,
+        20,
+        15
+      ],
+      "ref": [
+        70,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "epizyme_wj102",
+      "name": "Epizyme Two-color 10–250 kDa (WJ102)",
+      "sizes": [
+        250,
+        150,
+        100,
+        70,
+        50,
+        40,
+        35,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "epizyme_wj103",
+      "name": "Epizyme Three-color 10–250 kDa (WJ103)",
+      "sizes": [
+        250,
+        150,
+        100,
+        70,
+        50,
+        40,
+        35,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "epizyme_wj106",
+      "name": "Epizyme NIR 10–250 kDa (WJ106)",
+      "sizes": [
+        250,
+        150,
+        100,
+        70,
+        50,
+        40,
+        35,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "epizyme_wj107",
+      "name": "Epizyme Three-color 10–180 kDa (WJ107)",
+      "sizes": [
+        180,
+        130,
+        100,
+        70,
+        55,
+        40,
+        35,
+        25,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0068",
+      "name": "Beyotime Prestained 10–180 kDa (P0068/P0069)",
+      "sizes": [
+        180,
+        130,
+        95,
+        72,
+        55,
+        43,
+        34,
+        26,
+        17,
+        10
+      ],
+      "ref": [
+        72,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0071",
+      "name": "Beyotime BeyoColor 6.5–270 kDa (P0071/P0072)",
+      "sizes": [
+        270,
+        175,
+        130,
+        95,
+        66,
+        52,
+        37,
+        30,
+        16,
+        6.5
+      ],
+      "ref": [
+        270,
+        52,
+        30
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0075",
+      "name": "Beyotime BeyoColor 10–170 kDa (P0075/P0076/P0077)",
+      "sizes": [
+        170,
+        130,
+        100,
+        70,
+        55,
+        45,
+        35,
+        25,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        15
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0776",
+      "name": "Beyotime BeyoColor 10–250 kDa (P0776)",
+      "sizes": [
+        250,
+        130,
+        100,
+        70,
+        50,
+        40,
+        30,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0773",
+      "name": "Beyotime BeyoColor 8–180 kDa (P0773)",
+      "sizes": [
+        180,
+        130,
+        100,
+        70,
+        55,
+        43,
+        33,
+        25,
+        17,
+        8
+      ],
+      "ref": [
+        70,
+        8
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0779",
+      "name": "Beyotime BeyoColor 25–300 kDa (P0779)",
+      "sizes": [
+        300,
+        250,
+        200,
+        160,
+        130,
+        100,
+        70,
+        45,
+        25
+      ],
+      "ref": [
+        70,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0771",
+      "name": "Beyotime BeyoColor 2.7–40 kDa (P0771, Tricine)",
+      "sizes": [
+        40,
+        30,
+        25,
+        20,
+        15,
+        10,
+        6.5,
+        4.2,
+        2.7
+      ],
+      "ref": [
+        40,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0060",
+      "name": "Beyotime Unstained 10–150 kDa (P0060)",
+      "sizes": [
+        150,
+        95,
+        80,
+        66,
+        52,
+        42,
+        35,
+        25,
+        15,
+        10
+      ],
+      "ref": []
+    },
+    {
+      "kind": "protein",
+      "id": "beyotime_p0063",
+      "name": "Beyotime Unstained 10–200 kDa (P0063)",
+      "sizes": [
+        200,
+        150,
+        120,
+        100,
+        85,
+        70,
+        60,
+        50,
+        40,
+        30,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        50
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "transgen_dm111",
+      "name": "TransGen Blue Plus II (DM111)",
+      "sizes": [
+        120,
+        100,
+        70,
+        50,
+        40,
+        30,
+        25,
+        14
+      ],
+      "ref": [
+        120,
+        50,
+        14
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "transgen_dm141",
+      "name": "TransGen Blue Plus V (DM141)",
+      "sizes": [
+        190,
+        140,
+        95,
+        70,
+        55,
+        43,
+        33,
+        26,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        20
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "transgen_dm151",
+      "name": "TransGen Blue Plus VI (DM151)",
+      "sizes": [
+        250,
+        130,
+        100,
+        72,
+        50,
+        40,
+        30,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        72,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "transgen_dr201",
+      "name": "TransGen ProteinRuler II unstained (DR201)",
+      "sizes": [
+        120,
+        100,
+        80,
+        60,
+        50,
+        40,
+        30,
+        20,
+        12
+      ],
+      "ref": [
+        50
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "solarbio_pr1910",
+      "name": "Solarbio Rainbow 180 (PR1910)",
+      "sizes": [
+        180,
+        135,
+        100,
+        75,
+        63,
+        48,
+        35,
+        25,
+        17,
+        11
+      ],
+      "ref": [
+        75,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "solarbio_pr1920",
+      "name": "Solarbio Rainbow 245 (PR1920)",
+      "sizes": [
+        245,
+        180,
+        135,
+        100,
+        75,
+        63,
+        48,
+        35,
+        25,
+        20,
+        17,
+        11
+      ],
+      "ref": [
+        75,
+        25
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "sangon_c610110",
+      "name": "Sangon RealBand Marker II (C610110)",
+      "sizes": [
+        180,
+        130,
+        95,
+        72,
+        52,
+        41,
+        31,
+        25,
+        17,
+        10
+      ],
+      "ref": [
+        72,
+        10
+      ]
+    },
+    {
+      "kind": "protein",
+      "id": "sangon_c610210",
+      "name": "Sangon RealBand Two-color 10–250 kDa (C610210)",
+      "sizes": [
+        250,
+        150,
+        100,
+        70,
+        50,
+        40,
+        35,
+        25,
+        20,
+        15,
+        10
+      ],
+      "ref": [
+        70,
+        25
+      ]
+    }
+  ]
+}

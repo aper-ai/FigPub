@@ -1,0 +1,18 @@
+# Runtime versions used for this release. Python 3.12 is recommended.
+numpy==2.5.4
+scipy==1.18.1
+scikit-image==0.26.0
+tifffile==2026.11.8
+imagecodecs==2026.10.10
+Pillow==13.0.0
+fastapi==0.141.1
+uvicorn==0.52.1
+pydantic==2.13.4
+python-multipart==0.0.33
+matplotlib==3.10.8
+PyMuPDF==1.26.6
+python-pptx==1.0.2
+openpyxl==3.1.5
+fonttools==4.61.1
+svglib==2.4.0
+reportlab==4.4.9

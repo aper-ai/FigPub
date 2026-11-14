@@ -1,0 +1,14 @@
+[
+  {
+    "name": "GelFigure",
+    "url": "https://github.com/poplarity/GelFigure.git",
+    "commit": "6fe1ff545e25eb6abcee6c490dba7e8678414a02",
+    "usage": "functional and algorithm-design reference; runtime implementation rebuilt"
+  },
+  {
+    "name": "ScieFig-Community",
+    "url": "https://github.com/pamelah-233/ScieFig-Community.git",
+    "commit": "6cdaec4cf9ba91b75ceb431001ace93c4633e1cd",
+    "usage": "functional and algorithm-design reference; runtime implementation rebuilt"
+  }
+]

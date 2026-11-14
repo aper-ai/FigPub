@@ -1,0 +1,122 @@
+{
+  "version": "0.1.0",
+  "recorded_at_utc": "2026-11-11T09:00:13.874169+00:00",
+  "synthetic_data": true,
+  "environment": {
+    "os": "Linux x86-64",
+    "cpu": "Intel Xeon Platinum 8573C",
+    "python": "3.12.14",
+    "node": "24.22.1",
+    "browser": "Chrome Headless Shell 159.0.8154.2"
+  },
+  "python": {
+    "command": "python -m pytest -q",
+    "tests": 112,
+    "passed": 112,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 25.774,
+    "warnings": 2,
+    "warning_scope": [
+      "AnyIO pytest plugin alias deprecation",
+      "FastAPI/httpx integration deprecation"
+    ],
+    "modules": {
+      "tests.test_analysis": 25,
+      "tests.test_api": 9,
+      "tests.test_charts": 9,
+      "tests.test_exports": 9,
+      "tests.test_launcher": 1,
+      "tests.test_migration": 21,
+      "tests.test_preflight": 6,
+      "tests.test_storage": 11,
+      "tests.test_vector_fonts": 9,
+      "tests.test_vectors": 12
+    }
+  },
+  "javascript": {
+    "command": "npm test",
+    "tests": 29,
+    "passed": 29,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 780.472053,
+    "groups": {
+      "frontend_domain_and_state": 13,
+      "analysis_identity": 10,
+      "gel_engine": 6
+    }
+  },
+  "lint": {
+    "command": "npm run lint",
+    "tool": "oxlint 1.93.0",
+    "passed": true,
+    "errors": 0
+  },
+  "browser": {
+    "synthetic_data": true,
+    "scenarios": [
+      {
+        "name": "empty workspace and synthetic demo",
+        "passed": true,
+        "elapsed_ms": 2452.56
+      },
+      {
+        "name": "drag, undo/redo, transform, keyboard focus",
+        "passed": true,
+        "elapsed_ms": 3003.44
+      },
+      {
+        "name": "binary worker localization and manual marker calibration",
+        "passed": true,
+        "elapsed_ms": 1160.89
+      },
+      {
+        "name": "WB ROI identities, n=1, CSV, result invalidation and source isolation",
+        "passed": true,
+        "elapsed_ms": 2043.31
+      },
+      {
+        "name": "qPCR technical aggregation and actual-data vector chart",
+        "passed": true,
+        "elapsed_ms": 3156.44
+      },
+      {
+        "name": "microscopy CPU segmentation and source overlay",
+        "passed": true,
+        "elapsed_ms": 1420.8
+      },
+      {
+        "name": "source PPI checks, five file exports, complete project reopen",
+        "passed": true,
+        "elapsed_ms": 12741.31
+      },
+      {
+        "name": "16-bit file picker import and compact desktop layout",
+        "passed": true,
+        "elapsed_ms": 521.98
+      }
+    ],
+    "browser_errors": [],
+    "passed": true
+  },
+  "svg_cross_renderer": {
+    "report": "svg_rendering_results.json",
+    "chromium_cases": 8,
+    "inkscape_cases": 8,
+    "all_passed": true,
+    "maximum_accepted_mae": 1.2,
+    "dpi": 144
+  },
+  "launcher_dependency_check": {
+    "command": "python run.py --check",
+    "passed": true
+  },
+  "limitations": [
+    "Windows installation and Office rendering have not been tested on a real Windows system.",
+    "No same-machine end-to-end comparison against the upstream applications.",
+    "Synthetic data tests do not establish real-image localization or segmentation accuracy.",
+    "The package is source plus launchers, not a signed executable installer."
+  ]
+}

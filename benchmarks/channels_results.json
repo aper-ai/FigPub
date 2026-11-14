@@ -1,0 +1,307 @@
+{
+  "recorded_at_utc": "2026-11-11T09:50:10Z",
+  "benchmark_version": 1,
+  "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+  "python": "3.12.14",
+  "cpu_logical_count": 9,
+  "packages": {
+    "numpy": "2.5.4",
+    "Pillow": "13.0.0",
+    "tifffile": "2026.11.8",
+    "imagecodecs": "2026.10.10",
+    "psutil": "7.2.2"
+  },
+  "fixture": {
+    "synthetic": true,
+    "axes": "CYX",
+    "shape": [
+      4,
+      2048,
+      2048
+    ],
+    "dtype": "uint16",
+    "compression": "deflate",
+    "file_bytes": 31496458,
+    "decoded_plane_bytes": 8388608,
+    "source_sha256": "bbeb829c059b1a27af3dc218be1aea582ab6b30991d3e9f58fadc6d771b4c9c0",
+    "raw_plane_sha256": [
+      "eb51121cb7e3f6aa1c54a9c3056780617afd2ef508735c55456fc45d9c239d5e",
+      "26d919f71d46ce594af70c834465c2c28e7b23da9e4d45952efd81d7b3214505",
+      "3630690d164beeee1701d35cc5ccfee8c0ce2562660853263cb3f54b609d9e09",
+      "93e2dab86992a978f499eda78d0faf7f04e1901ac0c6b2f78de4769b6f481d6c"
+    ]
+  },
+  "methodology": {
+    "cold": "Fresh process and empty original-plane cache; OS file cache not flushed.",
+    "warm": "Two renders with original-plane LRU populated; encoded HTTP cache not used.",
+    "preview": "1024 px maximum total layout; PNG encoding timed separately.",
+    "split": "Four individual channels plus merge in three columns; 8 original-pixel gaps.",
+    "rss": "psutil resident working set sampled every 5 ms; may miss shorter peaks; delta excludes preexisting process memory.",
+    "scope": "Local Linux backend measurements only. No Windows timing or comparison with the upstream projects is claimed.",
+    "render_memory": "One source/LUT channel at a time. Native LUT rows <= approximately 262144 pixels. An RGB accumulator above 8 million tile pixels uses a temporary mapped file."
+  },
+  "source_preservation_verified": true,
+  "scenarios": [
+    {
+      "scenario": "preview_merge",
+      "measurements": [
+        {
+          "cache_state": "cold_application_cache",
+          "render_ms": 659.974,
+          "png_encode_ms": 81.209,
+          "encoded_png_bytes": 552453,
+          "output_width_px": 1024,
+          "output_height_px": 1024,
+          "rss_before_bytes": 42328064,
+          "rss_peak_sampled_bytes": 154292224,
+          "rss_delta_peak_bytes": 111964160,
+          "rss_sample_count": 135,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 3145728,
+          "tile_accumulator_bytes": null
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 228.619,
+          "png_encode_ms": 88.219,
+          "encoded_png_bytes": 552453,
+          "output_width_px": 1024,
+          "output_height_px": 1024,
+          "rss_before_bytes": 104349696,
+          "rss_peak_sampled_bytes": 154759168,
+          "rss_delta_peak_bytes": 50409472,
+          "rss_sample_count": 63,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 3145728,
+          "tile_accumulator_bytes": null
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 221.254,
+          "png_encode_ms": 81.934,
+          "encoded_png_bytes": 552453,
+          "output_width_px": 1024,
+          "output_height_px": 1024,
+          "rss_before_bytes": 104292352,
+          "rss_peak_sampled_bytes": 154759168,
+          "rss_delta_peak_bytes": 50466816,
+          "rss_sample_count": 60,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 3145728,
+          "tile_accumulator_bytes": null
+        }
+      ],
+      "warm_render_median_ms": 224.936,
+      "original_dtypes": [
+        "uint16",
+        "uint16",
+        "uint16",
+        "uint16"
+      ],
+      "originals_read_only": true,
+      "raw_plane_sha256_after": [
+        "eb51121cb7e3f6aa1c54a9c3056780617afd2ef508735c55456fc45d9c239d5e",
+        "26d919f71d46ce594af70c834465c2c28e7b23da9e4d45952efd81d7b3214505",
+        "3630690d164beeee1701d35cc5ccfee8c0ce2562660853263cb3f54b609d9e09",
+        "93e2dab86992a978f499eda78d0faf7f04e1901ac0c6b2f78de4769b6f481d6c"
+      ],
+      "source_file_sha256_after": "bbeb829c059b1a27af3dc218be1aea582ab6b30991d3e9f58fadc6d771b4c9c0"
+    },
+    {
+      "scenario": "native_merge",
+      "measurements": [
+        {
+          "cache_state": "cold_application_cache",
+          "render_ms": 490.499,
+          "png_encode_ms": null,
+          "encoded_png_bytes": null,
+          "output_width_px": 2048,
+          "output_height_px": 2048,
+          "rss_before_bytes": 42426368,
+          "rss_peak_sampled_bytes": 166789120,
+          "rss_delta_peak_bytes": 124362752,
+          "rss_sample_count": 82,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 12582912,
+          "tile_accumulator_bytes": 50331648
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 181.353,
+          "png_encode_ms": null,
+          "encoded_png_bytes": null,
+          "output_width_px": 2048,
+          "output_height_px": 2048,
+          "rss_before_bytes": 99655680,
+          "rss_peak_sampled_bytes": 154914816,
+          "rss_delta_peak_bytes": 55259136,
+          "rss_sample_count": 36,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 12582912,
+          "tile_accumulator_bytes": 50331648
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 146.315,
+          "png_encode_ms": null,
+          "encoded_png_bytes": null,
+          "output_width_px": 2048,
+          "output_height_px": 2048,
+          "rss_before_bytes": 104574976,
+          "rss_peak_sampled_bytes": 154914816,
+          "rss_delta_peak_bytes": 50339840,
+          "rss_sample_count": 30,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 12582912,
+          "tile_accumulator_bytes": 50331648
+        }
+      ],
+      "warm_render_median_ms": 163.834,
+      "original_dtypes": [
+        "uint16",
+        "uint16",
+        "uint16",
+        "uint16"
+      ],
+      "originals_read_only": true,
+      "raw_plane_sha256_after": [
+        "eb51121cb7e3f6aa1c54a9c3056780617afd2ef508735c55456fc45d9c239d5e",
+        "26d919f71d46ce594af70c834465c2c28e7b23da9e4d45952efd81d7b3214505",
+        "3630690d164beeee1701d35cc5ccfee8c0ce2562660853263cb3f54b609d9e09",
+        "93e2dab86992a978f499eda78d0faf7f04e1901ac0c6b2f78de4769b6f481d6c"
+      ],
+      "source_file_sha256_after": "bbeb829c059b1a27af3dc218be1aea582ab6b30991d3e9f58fadc6d771b4c9c0"
+    },
+    {
+      "scenario": "preview_split",
+      "measurements": [
+        {
+          "cache_state": "cold_application_cache",
+          "render_ms": 153.318,
+          "png_encode_ms": 44.807,
+          "encoded_png_bytes": 323163,
+          "output_width_px": 1024,
+          "output_height_px": 682,
+          "rss_before_bytes": 42287104,
+          "rss_peak_sampled_bytes": 104333312,
+          "rss_delta_peak_bytes": 62046208,
+          "rss_sample_count": 37,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 2095104,
+          "tile_accumulator_bytes": null
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 42.953,
+          "png_encode_ms": 43.892,
+          "encoded_png_bytes": 323163,
+          "output_width_px": 1024,
+          "output_height_px": 682,
+          "rss_before_bytes": 101523456,
+          "rss_peak_sampled_bytes": 101527552,
+          "rss_delta_peak_bytes": 4096,
+          "rss_sample_count": 18,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 2095104,
+          "tile_accumulator_bytes": null
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 47.373,
+          "png_encode_ms": 45.192,
+          "encoded_png_bytes": 323163,
+          "output_width_px": 1024,
+          "output_height_px": 682,
+          "rss_before_bytes": 101523456,
+          "rss_peak_sampled_bytes": 101527552,
+          "rss_delta_peak_bytes": 4096,
+          "rss_sample_count": 19,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 2095104,
+          "tile_accumulator_bytes": null
+        }
+      ],
+      "warm_render_median_ms": 45.163,
+      "original_dtypes": [
+        "uint16",
+        "uint16",
+        "uint16",
+        "uint16"
+      ],
+      "originals_read_only": true,
+      "raw_plane_sha256_after": [
+        "eb51121cb7e3f6aa1c54a9c3056780617afd2ef508735c55456fc45d9c239d5e",
+        "26d919f71d46ce594af70c834465c2c28e7b23da9e4d45952efd81d7b3214505",
+        "3630690d164beeee1701d35cc5ccfee8c0ce2562660853263cb3f54b609d9e09",
+        "93e2dab86992a978f499eda78d0faf7f04e1901ac0c6b2f78de4769b6f481d6c"
+      ],
+      "source_file_sha256_after": "bbeb829c059b1a27af3dc218be1aea582ab6b30991d3e9f58fadc6d771b4c9c0"
+    },
+    {
+      "scenario": "native_split",
+      "measurements": [
+        {
+          "cache_state": "cold_application_cache",
+          "render_ms": 944.915,
+          "png_encode_ms": null,
+          "encoded_png_bytes": null,
+          "output_width_px": 6160,
+          "output_height_px": 4104,
+          "rss_before_bytes": 42143744,
+          "rss_peak_sampled_bytes": 301330432,
+          "rss_delta_peak_bytes": 259186688,
+          "rss_sample_count": 179,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 75841920,
+          "tile_accumulator_bytes": 50331648
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 519.565,
+          "png_encode_ms": null,
+          "encoded_png_bytes": null,
+          "output_width_px": 6160,
+          "output_height_px": 4104,
+          "rss_before_bytes": 99508224,
+          "rss_peak_sampled_bytes": 289910784,
+          "rss_delta_peak_bytes": 190402560,
+          "rss_sample_count": 101,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 75841920,
+          "tile_accumulator_bytes": 50331648
+        },
+        {
+          "cache_state": "warm_original_plane_cache",
+          "render_ms": 479.98,
+          "png_encode_ms": null,
+          "encoded_png_bytes": null,
+          "output_width_px": 6160,
+          "output_height_px": 4104,
+          "rss_before_bytes": 87785472,
+          "rss_peak_sampled_bytes": 289910784,
+          "rss_delta_peak_bytes": 202125312,
+          "rss_sample_count": 95,
+          "retained_plane_cache_bytes": 33554432,
+          "output_rgb_bytes": 75841920,
+          "tile_accumulator_bytes": 50331648
+        }
+      ],
+      "warm_render_median_ms": 499.773,
+      "original_dtypes": [
+        "uint16",
+        "uint16",
+        "uint16",
+        "uint16"
+      ],
+      "originals_read_only": true,
+      "raw_plane_sha256_after": [
+        "eb51121cb7e3f6aa1c54a9c3056780617afd2ef508735c55456fc45d9c239d5e",
+        "26d919f71d46ce594af70c834465c2c28e7b23da9e4d45952efd81d7b3214505",
+        "3630690d164beeee1701d35cc5ccfee8c0ce2562660853263cb3f54b609d9e09",
+        "93e2dab86992a978f499eda78d0faf7f04e1901ac0c6b2f78de4769b6f481d6c"
+      ],
+      "source_file_sha256_after": "bbeb829c059b1a27af3dc218be1aea582ab6b30991d3e9f58fadc6d771b4c9c0"
+    }
+  ],
+  "elapsed_seconds": 7.516
+}

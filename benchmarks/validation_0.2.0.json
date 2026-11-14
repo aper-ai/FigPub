@@ -1,0 +1,296 @@
+{
+  "application_version": "0.2.0",
+  "recorded_at_utc": "2026-11-11T10:18:48.241303+00:00",
+  "environment": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "node": "24.22.1",
+    "browser": "Chrome Headless Shell 159.0.8154.2",
+    "driver": "Playwright"
+  },
+  "synthetic_data_only": true,
+  "python": {
+    "command": "FIGURE_WORKBENCH_TEST_CELLPOSE=1 python -m pytest -q",
+    "tests": 210,
+    "passed": 210,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "seconds": 45.768,
+    "real_cellpose_enabled": true,
+    "warnings": 2,
+    "warning_scope": [
+      "AnyIO pytest plugin alias deprecation",
+      "Starlette TestClient/httpx integration deprecation"
+    ],
+    "modules": {
+      "tests.test_analysis": 25,
+      "tests.test_api": 14,
+      "tests.test_cellpose_runtime": 13,
+      "tests.test_channel_integration": 8,
+      "tests.test_channels": 26,
+      "tests.test_charts": 9,
+      "tests.test_exports": 9,
+      "tests.test_launcher": 5,
+      "tests.test_microscopy_measurements": 24,
+      "tests.test_migration": 22,
+      "tests.test_preflight": 6,
+      "tests.test_runtime_paths": 6,
+      "tests.test_statistics_extended": 11,
+      "tests.test_storage": 11,
+      "tests.test_vector_fonts": 9,
+      "tests.test_vectors": 12
+    }
+  },
+  "javascript": {
+    "command": "npm test",
+    "tests": 51,
+    "passed": 51,
+    "failed": 0,
+    "skipped": 0,
+    "duration_ms": 879.764,
+    "groups": {
+      "frontend": 45,
+      "gel_engine": 6
+    }
+  },
+  "lint": {
+    "command": "npm run lint",
+    "tool": "oxlint 1.93.0",
+    "passed": true,
+    "errors": 0
+  },
+  "browser": {
+    "scenario_count": 22,
+    "browser_errors": [],
+    "passed": true,
+    "suites": {
+      "baseline": {
+        "synthetic_data": true,
+        "scenarios": [
+          {
+            "name": "empty workspace and synthetic demo",
+            "passed": true,
+            "elapsed_ms": 2669.54
+          },
+          {
+            "name": "drag, undo/redo, transform, keyboard focus",
+            "passed": true,
+            "elapsed_ms": 3161.61
+          },
+          {
+            "name": "binary worker localization and manual marker calibration",
+            "passed": true,
+            "elapsed_ms": 1161.16
+          },
+          {
+            "name": "WB ROI identities, n=1, CSV, result invalidation and source isolation",
+            "passed": true,
+            "elapsed_ms": 2154.65
+          },
+          {
+            "name": "qPCR technical aggregation and actual-data vector chart",
+            "passed": true,
+            "elapsed_ms": 2846.12
+          },
+          {
+            "name": "microscopy CPU segmentation and source overlay",
+            "passed": true,
+            "elapsed_ms": 1112.78
+          },
+          {
+            "name": "source PPI checks, five file exports, complete project reopen",
+            "passed": true,
+            "elapsed_ms": 12538.06
+          },
+          {
+            "name": "16-bit file picker import and compact desktop layout",
+            "passed": true,
+            "elapsed_ms": 643.93
+          }
+        ],
+        "browser_errors": [],
+        "passed": true
+      },
+      "channels_and_real_cellpose": {
+        "synthetic_data": true,
+        "scenarios": [
+          {
+            "name": "TCZYX import, frame identity, per-channel edits and real split display",
+            "passed": true,
+            "elapsed_ms": 4158.61
+          },
+          {
+            "name": "Split tile ROI uses original coordinates, two raw channels, no WB ROI contamination",
+            "passed": true,
+            "elapsed_ms": 1377.58
+          },
+          {
+            "name": "Display edits retain science; frame changes isolate and restore raw ROI/results",
+            "passed": true,
+            "elapsed_ms": 1518.56
+          },
+          {
+            "name": "Elliptical ROI threshold and real two-channel overlap metrics",
+            "passed": true,
+            "elapsed_ms": 2042.75
+          },
+          {
+            "name": "Original-coordinate line gesture, multichannel profile and visible plot",
+            "passed": true,
+            "elapsed_ms": 1282.56
+          },
+          {
+            "name": "Split creates editable panels; portable project restores channels, ROIs and measurements",
+            "passed": true,
+            "elapsed_ms": 1042.02
+          },
+          {
+            "name": "Different-size sources rejected; uint16 + uint8 combination retains two originals",
+            "passed": true,
+            "elapsed_ms": 1588.23
+          },
+          {
+            "name": "Actual CPU model status, UI request, isolated inference and persisted original-source result",
+            "passed": true,
+            "elapsed_ms": 16170.25
+          }
+        ],
+        "browser_errors": [],
+        "passed": true,
+        "cellpose_cpu": {
+          "official_model": "nuclei",
+          "candidate_count": 1,
+          "scientific_accuracy_claimed": false
+        }
+      },
+      "input_and_layout": {
+        "synthetic_data": true,
+        "scenarios": [
+          {
+            "name": "Five consecutive numeric frame edits survive forced async renders and native Tab",
+            "passed": true
+          },
+          {
+            "name": "Enter commits text; native number select-all survives redraw and empty values commit automatic range",
+            "passed": true
+          },
+          {
+            "name": "Escape discards an uncommitted field and closes a modal without blocking redraw",
+            "passed": true
+          },
+          {
+            "name": "Workflow clicks commit drafts; clean button pointer transactions and checkbox changes survive redraw",
+            "passed": true
+          },
+          {
+            "name": "Clicking another source commits only the prior source and leaves no blocked render",
+            "passed": true
+          },
+          {
+            "name": "Raw gap changes visible spacing; explicit columns survive 900px viewport and source ROI CTM stays exact",
+            "passed": true
+          }
+        ],
+        "browser_errors": [],
+        "passed": true,
+        "grid_probe": {
+          "before": [
+            {
+              "x": 195.015625,
+              "y": 271,
+              "width": 145.9375,
+              "height": 125.296875
+            },
+            {
+              "x": 347.03125,
+              "y": 271,
+              "width": 145.9375,
+              "height": 125.296875
+            },
+            {
+              "x": 499.046875,
+              "y": 271,
+              "width": 145.9375,
+              "height": 125.296875
+            },
+            {
+              "x": 195.015625,
+              "y": 402.375,
+              "width": 145.9375,
+              "height": 125.296875
+            }
+          ],
+          "after": [
+            {
+              "x": 187,
+              "y": 271,
+              "width": 145,
+              "height": 124.65625
+            },
+            {
+              "x": 362.203125,
+              "y": 271,
+              "width": 145,
+              "height": 124.65625
+            },
+            {
+              "x": 537.40625,
+              "y": 271,
+              "width": 145,
+              "height": 124.65625
+            },
+            {
+              "x": 187,
+              "y": 425.859375,
+              "width": 145,
+              "height": 124.65625
+            }
+          ],
+          "gap_before_px": 6.078125,
+          "gap_after_px": 30.203125,
+          "computed": {
+            "gap": "30.2083px",
+            "columns": "145px 145px 145px",
+            "style": "--tile-columns:3;--tile-width:145px;--tile-height:124.66666666666667px;--tile-gap:30.208333333333336px"
+          }
+        },
+        "grid_geometry": {
+          "viewport_width_px": 900,
+          "columns": 3,
+          "gap_before_px": 6.078125,
+          "gap_after_px": 30.203125,
+          "source_roi": {
+            "x": 20,
+            "y": 25,
+            "width": 80,
+            "height": 60
+          }
+        }
+      }
+    },
+    "input_and_layout_independent_repeat": {
+      "passed": true,
+      "scenarios": 6,
+      "browser_errors": [],
+      "included_in_scenario_count": false
+    }
+  },
+  "performance_reports": [
+    "channels_results.json",
+    "cellpose_cpu_smoke.json"
+  ],
+  "historical_reports": {
+    "version": "0.1.0",
+    "validation": "validation_0.1.0.json",
+    "svg_cross_renderer": "svg_rendering_results.json",
+    "remeasured_in_0_2": false
+  },
+  "windows_static_validation": "../packaging/windows_validation.json",
+  "limitations": [
+    "Windows startup, native DLL loading, fonts and Office rendering have not been dynamically tested on Windows.",
+    "No same-machine end-to-end performance comparison against the upstream applications.",
+    "Synthetic execution and numerical tests do not establish real biological-image segmentation accuracy.",
+    "The documented specialist upstream workflows remain incomplete; this is not full upstream feature parity."
+  ]
+}

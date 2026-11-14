@@ -1,0 +1,47 @@
+{
+  "synthetic_data": true,
+  "scenarios": [
+    {
+      "name": "empty workspace and synthetic demo",
+      "passed": true,
+      "elapsed_ms": 1461.93
+    },
+    {
+      "name": "drag, undo/redo, transform, keyboard focus",
+      "passed": true,
+      "elapsed_ms": 3173.91
+    },
+    {
+      "name": "binary worker localization and manual marker calibration",
+      "passed": true,
+      "elapsed_ms": 1002.66
+    },
+    {
+      "name": "WB ROI identities, n=1, CSV, result invalidation and source isolation",
+      "passed": true,
+      "elapsed_ms": 2259.65
+    },
+    {
+      "name": "qPCR technical aggregation and actual-data vector chart",
+      "passed": true,
+      "elapsed_ms": 2438.62
+    },
+    {
+      "name": "microscopy CPU segmentation and source overlay",
+      "passed": true,
+      "elapsed_ms": 939.34
+    },
+    {
+      "name": "source PPI checks, five file exports, complete project reopen",
+      "passed": true,
+      "elapsed_ms": 12022.17
+    },
+    {
+      "name": "16-bit file picker import and compact desktop layout",
+      "passed": true,
+      "elapsed_ms": 498.23
+    }
+  ],
+  "browser_errors": [],
+  "passed": true
+}

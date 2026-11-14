@@ -1,0 +1,14 @@
+{
+  "validation": "read_only_full_manifest_and_installed_metadata",
+  "source_modified": false,
+  "component_files": 17372,
+  "component_bytes": 1809489296,
+  "models": {
+    "cyto3": "2dc3087a8abd7da46d1ab0ddd5824639933cc3ff63b382af3fa1939a392db93c",
+    "nucleitorch_0": "89ca45e4a45048d5010d29621466b1274b91b3dcb9714dce9f9e90a9a8671303"
+  },
+  "dependencies": 24,
+  "source_manifest_sha256": "6c943b430c7e4193c2d370d0b340a85e1e4f066429ec0d643109fbe6f30536e7",
+  "elapsed_seconds": 7.702251628999875,
+  "windows_executed": false
+}

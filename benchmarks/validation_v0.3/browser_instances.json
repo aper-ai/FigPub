@@ -1,0 +1,31 @@
+{
+  "synthetic_data": true,
+  "scenarios": [
+    {
+      "name": "Uploaded uint16 source runs real classical segmentation and opens lossless instance review",
+      "passed": true
+    },
+    {
+      "name": "Two original-coordinate seed clicks split an instance; merge restores its exact pixels",
+      "passed": true
+    },
+    {
+      "name": "Delete and manual rectangle update original-pixel measurements; undo and redo restore exact masks",
+      "passed": true
+    },
+    {
+      "name": "Reviewed CSV and uint32 TIFF match edited masks; original image and automatic segmentation remain unchanged",
+      "passed": true
+    },
+    {
+      "name": "Portable project reopens, replays all four edits and restores both immutable and reviewed masks",
+      "passed": true
+    },
+    {
+      "name": "Manual polygon editing uses real pixels, rejects overlaps and leaves history unchanged after errors",
+      "passed": true
+    }
+  ],
+  "browser_errors": [],
+  "passed": true
+}

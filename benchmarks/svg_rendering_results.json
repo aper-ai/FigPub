@@ -1,0 +1,180 @@
+{
+  "scope": "Synthetic quadrant PDF cropped to a smaller region, flipped, rotated, and exported to SVG; CJK/Greek labels checked for visible glyphs. No experimental biomedical data.",
+  "pixel_comparison": {
+    "dpi": 144,
+    "channels": "RGB uint8",
+    "metric": "mean absolute channel difference over whole canvas",
+    "acceptance_max_mae": 1.2
+  },
+  "chromium": {
+    "renderer": "Chromium Headless Shell 159.0.8154.2",
+    "results": [
+      {
+        "case": 0,
+        "flip_h": false,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": false,
+        "chromium_vs_pdf_mae_144dpi": 0.7819591802686894,
+        "chinese_and_latin_ink_pixels": 2264
+      },
+      {
+        "case": 0,
+        "flip_h": false,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": true,
+        "chromium_vs_pdf_mae_144dpi": 0.44238826062381614,
+        "chinese_and_latin_ink_pixels": 2271
+      },
+      {
+        "case": 1,
+        "flip_h": true,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": false,
+        "chromium_vs_pdf_mae_144dpi": 0.7878923420695977,
+        "chinese_and_latin_ink_pixels": 2264
+      },
+      {
+        "case": 1,
+        "flip_h": true,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": true,
+        "chromium_vs_pdf_mae_144dpi": 0.44848394196662067,
+        "chinese_and_latin_ink_pixels": 2271
+      },
+      {
+        "case": 2,
+        "flip_h": false,
+        "flip_v": true,
+        "rotation": 0,
+        "outlined": false,
+        "chromium_vs_pdf_mae_144dpi": 0.7973285430818211,
+        "chinese_and_latin_ink_pixels": 2264
+      },
+      {
+        "case": 2,
+        "flip_h": false,
+        "flip_v": true,
+        "rotation": 0,
+        "outlined": true,
+        "chromium_vs_pdf_mae_144dpi": 0.4577576234369479,
+        "chinese_and_latin_ink_pixels": 2271
+      },
+      {
+        "case": 3,
+        "flip_h": true,
+        "flip_v": true,
+        "rotation": 23,
+        "outlined": false,
+        "chromium_vs_pdf_mae_144dpi": 0.6866469821463415,
+        "chinese_and_latin_ink_pixels": 2264
+      },
+      {
+        "case": 3,
+        "flip_h": true,
+        "flip_v": true,
+        "rotation": 23,
+        "outlined": true,
+        "chromium_vs_pdf_mae_144dpi": 0.3467596527738826,
+        "chinese_and_latin_ink_pixels": 2271
+      }
+    ]
+  },
+  "inkscape": {
+    "renderer": "Inkscape 1.4",
+    "results": [
+      {
+        "case": 0,
+        "flip_h": false,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": false,
+        "has_cjk": false,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.0,
+        "embedded_raster_images": 0,
+        "vector_drawings": 5
+      },
+      {
+        "case": 0,
+        "flip_h": false,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": true,
+        "has_cjk": true,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.20705133460184869,
+        "embedded_raster_images": 0,
+        "vector_drawings": 17
+      },
+      {
+        "case": 1,
+        "flip_h": true,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": false,
+        "has_cjk": false,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.0,
+        "embedded_raster_images": 0,
+        "vector_drawings": 5
+      },
+      {
+        "case": 1,
+        "flip_h": true,
+        "flip_v": false,
+        "rotation": 0,
+        "outlined": true,
+        "has_cjk": true,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.20705133460184869,
+        "embedded_raster_images": 0,
+        "vector_drawings": 17
+      },
+      {
+        "case": 2,
+        "flip_h": false,
+        "flip_v": true,
+        "rotation": 0,
+        "outlined": false,
+        "has_cjk": false,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.0,
+        "embedded_raster_images": 0,
+        "vector_drawings": 5
+      },
+      {
+        "case": 2,
+        "flip_h": false,
+        "flip_v": true,
+        "rotation": 0,
+        "outlined": true,
+        "has_cjk": true,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.20705133460184869,
+        "embedded_raster_images": 0,
+        "vector_drawings": 17
+      },
+      {
+        "case": 3,
+        "flip_h": true,
+        "flip_v": true,
+        "rotation": 23,
+        "outlined": false,
+        "has_cjk": false,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.0032710054110857505,
+        "embedded_raster_images": 0,
+        "vector_drawings": 5
+      },
+      {
+        "case": 3,
+        "flip_h": true,
+        "flip_v": true,
+        "rotation": 23,
+        "outlined": true,
+        "has_cjk": true,
+        "inkscape_vs_direct_pdf_mae_144dpi": 0.21032234001293446,
+        "embedded_raster_images": 0,
+        "vector_drawings": 17
+      }
+    ]
+  },
+  "all_passed": true
+}

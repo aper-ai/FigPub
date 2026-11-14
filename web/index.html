@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>图研 · Figure Workbench</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/wb-workflow.css">
+  <link rel="stylesheet" href="/histology-fibers.css">
+  <link rel="stylesheet" href="/instance-review.css">
+  <link rel="stylesheet" href="/composition.css">
+  <link rel="stylesheet" href="/onboarding.css">
+</head>
+<body>
+  <div id="app"><div class="boot-screen"><span class="boot-mark">图</span><h1>图研</h1><p>正在打开本地科研工作台…</p></div></div>
+  <div id="toast-region" class="toast-region" role="status" aria-live="polite"></div>
+  <input id="import-files" type="file" multiple accept=".tif,.tiff,.png,.jpg,.jpeg,.bmp,.webp,.pdf,.svg,.csv,.tsv,.txt,.xlsx" hidden>
+  <input id="open-project" type="file" accept=".figwork,.gelfig,.sfig" hidden>
+  <input id="import-wb-files" type="file" multiple accept=".tif,.tiff,.png,.jpg,.jpeg,.bmp,.webp" hidden>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

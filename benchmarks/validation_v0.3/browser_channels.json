@@ -1,0 +1,42 @@
+{
+  "synthetic_data": true,
+  "scenarios": [
+    {
+      "name": "TCZYX import, frame identity, per-channel edits and real split display",
+      "passed": true,
+      "elapsed_ms": 3818.97
+    },
+    {
+      "name": "Split tile ROI uses original coordinates, two raw channels, no WB ROI contamination",
+      "passed": true,
+      "elapsed_ms": 1395.3
+    },
+    {
+      "name": "Display edits retain science; frame changes isolate and restore raw ROI/results",
+      "passed": true,
+      "elapsed_ms": 1824.34
+    },
+    {
+      "name": "Elliptical ROI threshold and real two-channel overlap metrics",
+      "passed": true,
+      "elapsed_ms": 1963.17
+    },
+    {
+      "name": "Original-coordinate line gesture, multichannel profile and visible plot",
+      "passed": true,
+      "elapsed_ms": 1253.64
+    },
+    {
+      "name": "Split creates editable panels; portable project restores channels, ROIs and measurements",
+      "passed": true,
+      "elapsed_ms": 1004.39
+    },
+    {
+      "name": "Different-size sources rejected; uint16 + uint8 combination retains two originals",
+      "passed": true,
+      "elapsed_ms": 1428.34
+    }
+  ],
+  "browser_errors": [],
+  "passed": true
+}

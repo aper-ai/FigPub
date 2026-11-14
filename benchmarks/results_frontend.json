@@ -1,0 +1,15 @@
+{
+  "benchmark": "frontend-recipe-snapshot",
+  "data": "synthetic geometry payload; no experimental measurements",
+  "node_version": "v24.22.1",
+  "object_count": 1000,
+  "contour_points_per_object": 128,
+  "recipe_samples": 100,
+  "recipe_median_ms": 0.02525900000000547,
+  "recipe_p95_ms": 0.11285599999973783,
+  "full_project_clone_single_sample_ms": 226.45652900000005,
+  "recipe_serialized_bytes": 492,
+  "full_project_serialized_bytes": 4917230,
+  "immutable_results_excluded": true,
+  "note": "Serialized byte counts are payload sizes, not heap memory measurements; timing is machine-dependent."
+}

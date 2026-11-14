@@ -1,0 +1,56 @@
+{
+  "benchmark_version": 1,
+  "synthetic_data": true,
+  "environment": {
+    "node": "v24.22.1",
+    "platform": "linux",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C"
+  },
+  "scope": "New projection/grid localization core only; excludes I/O, worker startup and marker catalogue matching.",
+  "cases": [
+    {
+      "width": 640,
+      "height": 360,
+      "input_bytes": 921600,
+      "expected_lanes": 6,
+      "detected_lanes": 6,
+      "detected_bands": 24,
+      "cold_ms": 67.52478399999998,
+      "samples_ms": [
+        20.893943999999976,
+        23.104743000000013,
+        22.407160999999974,
+        21.044167000000016,
+        51.48484100000002,
+        31.49259999999998,
+        27.30446699999999
+      ],
+      "median_ms": 23.104743000000013,
+      "max_ms": 51.48484100000002
+    },
+    {
+      "width": 1024,
+      "height": 1024,
+      "input_bytes": 4194304,
+      "expected_lanes": 12,
+      "detected_lanes": 12,
+      "detected_bands": 48,
+      "cold_ms": 66.01130800000004,
+      "samples_ms": [
+        61.22442900000004,
+        59.67554800000005,
+        54.36725799999999,
+        44.02317400000004,
+        56.56707400000005,
+        68.32660899999996,
+        65.56219099999998
+      ],
+      "median_ms": 59.67554800000005,
+      "max_ms": 68.32660899999996
+    }
+  ],
+  "limitations": [
+    "Synthetic fixtures do not establish accuracy on real experimental images.",
+    "Not a benchmark of GelFigure or ScieFig; no industry-leading performance claim."
+  ]
+}

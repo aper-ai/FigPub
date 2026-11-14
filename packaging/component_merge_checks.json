@@ -1,0 +1,9 @@
+{
+  "small_contract_tests": 9,
+  "passed": 9,
+  "failed": 0,
+  "report_generation_and_architecture_cases": "passed",
+  "actual_component_preflight": "component_merge_preflight.json",
+  "windows_execution": false,
+  "final_build_executed": false
+}

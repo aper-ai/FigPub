@@ -1,0 +1,175 @@
+{
+  "application": "Figure Workbench",
+  "application_version": "0.4.0",
+  "recorded_at_utc": "2026-11-12T10:29:51.192919+00:00",
+  "platform": "Linux x64",
+  "python": "3.12.14",
+  "node": "v24.22.1",
+  "automated_checks": [
+    {
+      "command": ".venv/bin/python -m pytest -q",
+      "exit_code": 0,
+      "passed": 459,
+      "skipped": 1,
+      "warnings": 1,
+      "duration_seconds": 28.64,
+      "log": "python-tests.log",
+      "skip_reason": "Official optional Cellpose CPU model component is not installed in this Linux validation environment. Real CPU inference was not rerun.",
+      "warning": "Starlette TestClient httpx deprecation"
+    },
+    {
+      "command": "npm test",
+      "exit_code": 0,
+      "passed": 155,
+      "failed": 0,
+      "skipped": 0,
+      "log": "node-tests.log"
+    },
+    {
+      "command": "npm run lint",
+      "exit_code": 0,
+      "log": "lint.log"
+    },
+    {
+      "command": ".venv/bin/python run.py --check",
+      "exit_code": 0,
+      "log": "runtime-check.log"
+    },
+    {
+      "command": ".venv/bin/python -m py_compile tests/browser_composition.py tests/test_browser_studio_ui.py",
+      "exit_code": 0,
+      "scope": "Syntax compilation only, not UI execution"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "browser_build": {
+    "command": "npm run build:browser",
+    "exit_code": 0,
+    "file": "Figure_Workbench_0.4.0_Browser.html",
+    "bytes": 17389779,
+    "sha256": "4e60c71d9139170f4977d88c2c16516a3857f0d55cfea46fafea962b1bb0d45a",
+    "external_runtime_dependencies": false,
+    "fonts_embedded": true
+  },
+  "browser_file_interop": {
+    "covered_by_python_suite": true,
+    "test_file": "tests/test_browser_studio_archive.py",
+    "passed": 7,
+    "scope": [
+      "Browser ZIP to native ProjectStore and native DEFLATE ZIP back to browser decoder",
+      "Original bytes and SHA-256, Chinese title and groups round trip",
+      "Pillow verifies 150/300/600 PPI in actual PNG files",
+      "PyMuPDF verifies physical PDF dimensions and exact lossless RGB image bytes",
+      "Font coverage matches actual fontTools cmap"
+    ]
+  },
+  "layout_benchmark": {
+    "file": "../composition_0.4.json",
+    "module_sha256": "8add262ffa372d73ad1082bcdf8011369569c786a4d71b02716da0e957a712c7",
+    "scope": "Pure JavaScript planPanelLayout only, synthetic image geometry; excludes image decoding, DOM rendering, import, network, exports and scientific analysis. No comparison against upstream software or competing tools.",
+    "results": [
+      {
+        "panels": 6,
+        "figure_mm": [
+          180,
+          140
+        ],
+        "warmup_runs": 1,
+        "measured_runs": 5,
+        "samples_ms": [
+          1.403,
+          0.516,
+          0.522,
+          0.991,
+          0.282
+        ],
+        "median_ms": 0.522
+      },
+      {
+        "panels": 144,
+        "figure_mm": [
+          1000,
+          1000
+        ],
+        "warmup_runs": 1,
+        "measured_runs": 5,
+        "samples_ms": [
+          18.772,
+          15.827,
+          14.103,
+          13.956,
+          15.121
+        ],
+        "median_ms": 15.121
+      },
+      {
+        "panels": 1000,
+        "figure_mm": [
+          1000,
+          1000
+        ],
+        "warmup_runs": 1,
+        "measured_runs": 5,
+        "samples_ms": [
+          122.908,
+          73.083,
+          66.364,
+          70.242,
+          203.97
+        ],
+        "median_ms": 73.083
+      }
+    ]
+  },
+  "acceptance": {
+    "real_browser_ui": {
+      "executed": false,
+      "passed": null,
+      "status": "blocked",
+      "reason": "Chromium requires sockets that the environment denies; sandbox escalation was explicitly rejected. The cloud browser cannot access the container localhost and its URL policy rejects file://. No bypass was attempted.",
+      "provided_scripts": [
+        "tests/browser_composition.py",
+        "tests/test_browser_studio_ui.py"
+      ]
+    },
+    "windows_native": {
+      "executed": false,
+      "passed": null,
+      "scope": "Release builder performs pinned ZIP hashes, per-file SHA-256/CRC, dependency declarations, PE32+ AMD64 and byte-identical source/app checks only. See external build receipt."
+    },
+    "competitor_performance_comparison": {
+      "executed": false,
+      "claim_of_leading_performance": false
+    }
+  },
+  "logs": [
+    {
+      "file": "composition-benchmark.log",
+      "bytes": 1389,
+      "sha256": "75d1fc4611df2548b6e30e0beb7830b5d85446f907079f38add801a36254a5e7"
+    },
+    {
+      "file": "lint.log",
+      "bytes": 182,
+      "sha256": "a5a43ad99fbccd6cf30f1a9a500a01ea59cd827b9bc2f9804a7583ce98b912f8"
+    },
+    {
+      "file": "node-tests.log",
+      "bytes": 15625,
+      "sha256": "9140df3cbad06c3b29e8487297a7361389a41262bc61b889b4c920d0af1b846c"
+    },
+    {
+      "file": "python-tests.log",
+      "bytes": 1312,
+      "sha256": "921a0070ac7d5b7b1e381aa318f9049022cf4a29259ab75d76a7c6ee4f341f4d"
+    },
+    {
+      "file": "runtime-check.log",
+      "bytes": 346,
+      "sha256": "03d595af2b3413544bdcf732b86852f456107fe800e96f84235d36cec883628f"
+    }
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "synthetic_data": true,
+  "scenarios": [
+    {
+      "name": "Five consecutive numeric frame edits survive forced async renders and native Tab",
+      "passed": true
+    },
+    {
+      "name": "Enter commits text; native number select-all survives redraw and empty values commit automatic range",
+      "passed": true
+    },
+    {
+      "name": "Escape discards an uncommitted field and closes a modal without blocking redraw",
+      "passed": true
+    },
+    {
+      "name": "Workflow clicks commit drafts; clean button pointer transactions and checkbox changes survive redraw",
+      "passed": true
+    },
+    {
+      "name": "Clicking another source commits only the prior source and leaves no blocked render",
+      "passed": true
+    },
+    {
+      "name": "Raw gap changes visible spacing; explicit columns survive 900px viewport and source ROI CTM stays exact",
+      "passed": true
+    }
+  ],
+  "browser_errors": [],
+  "passed": true,
+  "grid_probe": {
+    "before": [
+      {
+        "x": 195.015625,
+        "y": 271,
+        "width": 145.9375,
+        "height": 125.296875
+      },
+      {
+        "x": 347.03125,
+        "y": 271,
+        "width": 145.9375,
+        "height": 125.296875
+      },
+      {
+        "x": 499.046875,
+        "y": 271,
+        "width": 145.9375,
+        "height": 125.296875
+      },
+      {
+        "x": 195.015625,
+        "y": 402.375,
+        "width": 145.9375,
+        "height": 125.296875
+      }
+    ],
+    "after": [
+      {
+        "x": 187,
+        "y": 271,
+        "width": 145,
+        "height": 124.65625
+      },
+      {
+        "x": 362.203125,
+        "y": 271,
+        "width": 145,
+        "height": 124.65625
+      },
+      {
+        "x": 537.40625,
+        "y": 271,
+        "width": 145,
+        "height": 124.65625
+      },
+      {
+        "x": 187,
+        "y": 425.859375,
+        "width": 145,
+        "height": 124.65625
+      }
+    ],
+    "gap_before_px": 6.078125,
+    "gap_after_px": 30.203125,
+    "computed": {
+      "gap": "30.2083px",
+      "columns": "145px 145px 145px",
+      "style": "--tile-columns:3;--tile-width:145px;--tile-height:124.66666666666667px;--tile-gap:30.208333333333336px"
+    }
+  },
+  "grid_geometry": {
+    "viewport_width_px": 900,
+    "columns": 3,
+    "gap_before_px": 6.078125,
+    "gap_after_px": 30.203125,
+    "source_roi": {
+      "x": 20,
+      "y": 25,
+      "width": 80,
+      "height": 60
+    }
+  }
+}

@@ -1,0 +1,36 @@
+图研 · Figure Workbench 0.3.0 — Windows x64 便携版
+
+1. 右键 Figure_Workbench_0.3.0_Windows_Main.zip，选择“全部解压”。
+2. 打开解压后的文件夹，双击 FigureWorkbench.exe。
+3. 浏览器自动打开本机工作台；无需安装 Python、pip、Node.js 或管理员权限。
+
+不要在 ZIP 内直接启动，也不要只复制 EXE。
+保留 FigureWorkbench.exe、runtime/ 和 app/ 在同一文件夹中。
+使用 Cellpose 时，让已有 0.2.0 CPU 组件中的 cellpose/ 也位于该文件夹；
+0.3 与该组件兼容，不需要重复下载或混装运行依赖。
+IHC、经典纤维分析、标签导入、实例编辑、WB 自动出图无需该可选模型组件。
+
+控制台窗口保持打开。退出时按 Ctrl+C；仅关闭浏览器不会停止服务。
+工程与原件保存在 %LOCALAPPDATA%\FigureWorkbench，升级时不要删除。
+转移或备份项目请用“保存工程”下载 .figwork。
+默认启动日志在 %LOCALAPPDATA%\FigureWorkbench\logs\launcher-进程号.log。
+
+本次新增
+- WB 导入后定位候选，直接建立可编辑定量 ROI；目标/内参/真实统计图自动布局。
+- 同图与跨文件内参匹配，多曝光整套质量推荐及显式应用。
+- Macenko、强度分级、阴阳例和批次锁定高级 IHC。
+- 纤维/肌管形态、核归属、中央核、融合指数和标记分型。
+- 细胞实例拆分、合并、删除、补画、撤销重做及 CSV/标签 TIFF。
+- 原图和最初分析保留，修订操作可随 .figwork 保存重开。
+
+详细中文步骤：app/docs/QUICK_START_0.3.md
+功能与边界：app/docs/FEATURE_AUDIT_0.3.md
+验证证据：app/docs/VALIDATION.md
+
+这是 Windows 10/11 x64 的未签名便携目录包，不是单文件安装器。
+Windows 原生二进制、固定依赖、逐文件 SHA-256 和 ZIP 完整性已核对；
+当前环境无法执行 Windows 程序，尚未完成真机启动、字体和 Office 验收。
+失败时保留控制台报错与日志，不要删除原始图像或工程。
+
+Cellpose 提供官方 cyto3/nuclei 通用 CPU 权重，不包含专用纤维训练权重。
+本版不接入 FigScan。应用源码在 app，许可在 LICENSE；第三方原许可分别保留。

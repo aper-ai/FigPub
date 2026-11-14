@@ -1,0 +1,67 @@
+{
+  "version": "0.1.0",
+  "build": "windows-x64-portable-1",
+  "recorded_at_utc": "2026-11-11T09:20:20.107443+00:00",
+  "windows_runtime_executed": false,
+  "native_launcher": {
+    "filename": "FigureWorkbench.exe",
+    "size_bytes": 174592,
+    "sha256": "fdd50a4ab217ccbc39ad45a551099bdf881ef5faf58d5b3d70685f32d6f2df24",
+    "pe_signature": "50450000",
+    "machine_hex": "0x8664",
+    "optional_header_hex": "0x20b",
+    "subsystem": 3,
+    "windows_runtime_executed": false,
+    "native_argument_tests": 12,
+    "compiler_version": "Zig 0.15.2",
+    "target": "x86_64-windows-gnu"
+  },
+  "targeted_python_tests": {
+    "tests": 20,
+    "passed": 20,
+    "failed": 0,
+    "seconds": 11.6,
+    "scope": [
+      "launcher",
+      "runtime_paths",
+      "api"
+    ],
+    "platform": "Linux"
+  },
+  "launcher_recheck": {
+    "tests": 11,
+    "passed": 11,
+    "failed": 0,
+    "seconds": 2.42,
+    "includes_real_posix_ctrl_c": true,
+    "overlaps_targeted_tests": true
+  },
+  "windows_wheel_validation": {
+    "count": 44,
+    "windows_markers_satisfied": true,
+    "target_python": "3.12.10",
+    "platform": "win_amd64"
+  },
+  "windows_payload_pe_scan": {
+    "binaries_before_vc_runtime_overlay": 317,
+    "non_amd64_binaries": 0
+  },
+  "microsoft_runtime_validation": {
+    "dll_count": 12,
+    "architecture": "AMD64",
+    "version": "14.52.37029.0",
+    "required_import_sites_verified": 19,
+    "required_symbols_verified": 288,
+    "missing_required_symbols": 0
+  },
+  "unprovided_optional_codec_libraries": [
+    "heif.dll",
+    "dpcore.dll",
+    "jetraw.dll",
+    "jxs.dll"
+  ],
+  "limitations": [
+    "No Windows execution environment; Windows startup, default browser integration, fonts and Office acceptance remain unverified.",
+    "Native C argument-encoding tests run on Linux do not establish full Windows process behavior."
+  ]
+}

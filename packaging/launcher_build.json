@@ -1,0 +1,13 @@
+{
+  "filename": "FigureWorkbench.exe",
+  "size_bytes": 174592,
+  "sha256": "fdd50a4ab217ccbc39ad45a551099bdf881ef5faf58d5b3d70685f32d6f2df24",
+  "pe_signature": "50450000",
+  "machine_hex": "0x8664",
+  "optional_header_hex": "0x20b",
+  "subsystem": 3,
+  "windows_runtime_executed": false,
+  "native_argument_tests": 12,
+  "compiler_version": "Zig 0.15.2",
+  "target": "x86_64-windows-gnu"
+}

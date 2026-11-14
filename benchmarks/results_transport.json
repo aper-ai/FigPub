@@ -1,0 +1,42 @@
+{
+  "benchmark_version": 1,
+  "synthetic_data": true,
+  "python": "3.12.14",
+  "scope": "FastAPI in-process TestClient, cached 1024x1024 localization view of a 4096x4096 uint16 source; includes response serialization, excludes network/worker calculation.",
+  "same_values": true,
+  "cases": {
+    "binary": {
+      "cold_ms": 109.45016300001953,
+      "samples_ms": [
+        11.881816999903094,
+        8.578851000038412,
+        7.904785999926389,
+        7.917987999917386,
+        4.567930000121123
+      ],
+      "median_ms": 7.917987999917386,
+      "p95_ms": 11.221223799930158,
+      "response_bytes": 4194304,
+      "content_type": "application/octet-stream"
+    },
+    "json": {
+      "cold_ms": 1187.6032879999912,
+      "samples_ms": [
+        1133.4481140002026,
+        1176.3761339998382,
+        1241.9281580000643,
+        1125.1772660002644,
+        1186.679145999733
+      ],
+      "median_ms": 1176.3761339998382,
+      "p95_ms": 1230.878355599998,
+      "response_bytes": 20119328,
+      "content_type": "application/json"
+    }
+  },
+  "limitations": [
+    "Not a throughput or latency claim for all machines.",
+    "These pixels are for localization only; analysis uses the original uint16 image.",
+    "Not an upstream application comparison."
+  ]
+}

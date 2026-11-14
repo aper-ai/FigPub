@@ -1,0 +1,129 @@
+{
+  "version": "0.2.0",
+  "build": "windows-x64-portable-2",
+  "recorded_at_utc": "2026-11-11T10:20:16.919377+00:00",
+  "status": "assembled_static_checks_passed",
+  "distribution": "core_with_cellpose_cpu",
+  "windows_runtime_executed": false,
+  "native_launcher": {
+    "path": "FigureWorkbench.exe",
+    "bytes": 174592,
+    "sha256": "fdd50a4ab217ccbc39ad45a551099bdf881ef5faf58d5b3d70685f32d6f2df24",
+    "architecture": "AMD64",
+    "format": "PE32+",
+    "windows_runtime_executed": false
+  },
+  "windows_wheel_validation": {
+    "core_count": 44,
+    "cellpose_count": 24,
+    "windows_markers_satisfied": true,
+    "target_python": "3.12.10",
+    "platform": "win_amd64",
+    "wheel_record_hashes_verified_at_install": true
+  },
+  "windows_payload_pe_scan": {
+    "binaries": 606,
+    "machine_counts": {
+      "0x8664": 600,
+      "0x14c": 4,
+      "0xaa64": 2
+    },
+    "non_amd64_binaries": 6,
+    "unexpected_non_amd64_binaries": 0,
+    "vendored_unused_launcher_templates": [
+      {
+        "path": "cellpose/runtime/Lib/site-packages/setuptools/cli-32.exe",
+        "machine_hex": "0x14c",
+        "format": "PE32",
+        "sha256": "32acc1bc543116cbe2cff10cb867772df2f254ff2634c870aef0b46c4b696fdb",
+        "role": "Unmodified setuptools launcher template; not executed by this application."
+      },
+      {
+        "path": "cellpose/runtime/Lib/site-packages/setuptools/cli-arm64.exe",
+        "machine_hex": "0xaa64",
+        "format": "PE32+",
+        "sha256": "b9a7d08da880dfac8bcf548eba4b06fb59b6f09b17d33148a0f6618328926c61",
+        "role": "Unmodified setuptools launcher template; not executed by this application."
+      },
+      {
+        "path": "cellpose/runtime/Lib/site-packages/setuptools/cli.exe",
+        "machine_hex": "0x14c",
+        "format": "PE32",
+        "sha256": "32acc1bc543116cbe2cff10cb867772df2f254ff2634c870aef0b46c4b696fdb",
+        "role": "Unmodified setuptools launcher template; not executed by this application."
+      },
+      {
+        "path": "cellpose/runtime/Lib/site-packages/setuptools/gui-32.exe",
+        "machine_hex": "0x14c",
+        "format": "PE32",
+        "sha256": "85dae1e95d77845f2cb59bcac3d4afe74bbe4c91a9bcc5bf4a71cd43104dbe7c",
+        "role": "Unmodified setuptools launcher template; not executed by this application."
+      },
+      {
+        "path": "cellpose/runtime/Lib/site-packages/setuptools/gui-arm64.exe",
+        "machine_hex": "0xaa64",
+        "format": "PE32+",
+        "sha256": "e694f4743405c8b5926ff457db6fe7f1a12dec7c16a9c3864784d3f4e07ae097",
+        "role": "Unmodified setuptools launcher template; not executed by this application."
+      },
+      {
+        "path": "cellpose/runtime/Lib/site-packages/setuptools/gui.exe",
+        "machine_hex": "0x14c",
+        "format": "PE32",
+        "sha256": "85dae1e95d77845f2cb59bcac3d4afe74bbe4c91a9bcc5bf4a71cd43104dbe7c",
+        "role": "Unmodified setuptools launcher template; not executed by this application."
+      }
+    ],
+    "scope": "PE signatures and architecture; runtime entries require AMD64 PE32+; known unused setuptools templates retained.",
+    "full_dll_import_closure_checked_by_this_builder": false
+  },
+  "payload_hashes": {
+    "files_verified_excluding_this_report_and_main_manifest": 24409,
+    "main_manifest": "WINDOWS_BUILD_MANIFEST.json"
+  },
+  "cellpose": {
+    "component": "Cellpose CPU",
+    "version": "0.2.0",
+    "integration": "same_folder_offline_bundle",
+    "source_manifest": "CELLPOSE_BUILD_MANIFEST.json",
+    "source_manifest_sha256": "6c943b430c7e4193c2d370d0b340a85e1e4f066429ec0d643109fbe6f30536e7",
+    "imported_files": 17372,
+    "imported_bytes": 1809489296,
+    "runtime": "cellpose/runtime/python.exe",
+    "worker": "app/workbench/cellpose_worker.py",
+    "separate_python_numpy_environment": true,
+    "numpy_version": "2.0.2",
+    "numba_threading_layer": "workqueue",
+    "models": {
+      "cyto3": {
+        "sha256": "2dc3087a8abd7da46d1ab0ddd5824639933cc3ff63b382af3fa1939a392db93c",
+        "bytes": 26566255,
+        "source_url": "https://www.cellpose.org/models/cyto3"
+      },
+      "nucleitorch_0": {
+        "sha256": "89ca45e4a45048d5010d29621466b1274b91b3dcb9714dce9f9e90a9a8671303",
+        "bytes": 26563614,
+        "source_url": "https://www.cellpose.org/models/nucleitorch_0"
+      }
+    },
+    "dependency_count": 24,
+    "shared_microsoft_notices": "licenses/Microsoft-VC-Runtime",
+    "shared_microsoft_dll_hashes_verified": true,
+    "source_files_modified": false,
+    "windows_runtime_execution_verified": false,
+    "original_component_instructions": "Cellpose_CPU_使用说明.txt"
+  },
+  "test_records": {
+    "application_validation": "app/docs/VALIDATION.md",
+    "real_cellpose_cpu_smoke": "app/benchmarks/cellpose_cpu_smoke.json",
+    "platform_of_those_execution_tests": "Linux",
+    "tests_executed_by_this_builder": false
+  },
+  "archive_verification": "Final ZIP integrity and hash are reported separately after archive creation.",
+  "limitations": [
+    "No Windows dynamic execution was performed.",
+    "PE architecture checks do not prove DLL import closure or successful Windows startup.",
+    "Optional imagecodecs HEIF/JPEG-XS/Jetraw libraries are not supplied.",
+    "Cellpose uses the workqueue backend; optional Numba TBB dependencies are not supplied."
+  ]
+}

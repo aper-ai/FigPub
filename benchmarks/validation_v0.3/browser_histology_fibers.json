@@ -1,0 +1,32 @@
+{
+  "synthetic_data": true,
+  "scenarios": [
+    {
+      "name": "True RGB import, Macenko estimate, supported four-group GMM and grade map",
+      "passed": true,
+      "elapsed_ms": 2981.45
+    },
+    {
+      "name": "Manual thresholds and original-coordinate negative/positive example recalibration",
+      "passed": true,
+      "elapsed_ms": 2505.18
+    },
+    {
+      "name": "Locked vectors/whitepoint/thresholds applied to second raw image with separate ROI context",
+      "passed": true,
+      "elapsed_ms": 1501.89
+    },
+    {
+      "name": "Explicit structure/instance/nucleus/marker channels, Feret calibration and nuclear phenotyping",
+      "passed": true,
+      "elapsed_ms": 1642.69
+    },
+    {
+      "name": "Myotube length/fusion recomputation, full denominator and original per-nucleus CSV",
+      "passed": true,
+      "elapsed_ms": 918.56
+    }
+  ],
+  "browser_errors": [],
+  "passed": true
+}

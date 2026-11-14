@@ -1,0 +1,93 @@
+{
+  "benchmark_version": 1,
+  "synthetic_data": true,
+  "comparison_scope": "same float64 border-median net integral; naive full-frame-per-ROI conversion vs ROI-first conversion",
+  "not_an_upstream_application_benchmark": true,
+  "environment": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "numpy": "2.5.4",
+    "scipy": "1.18.1",
+    "skimage": "0.26.0",
+    "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logical_cpu_count": 9,
+    "cpu_affinity_count": 9
+  },
+  "fixture": {
+    "shape": [
+      4096,
+      4096
+    ],
+    "dtype": "uint16",
+    "roi_count": 24,
+    "roi_shape": [
+      48,
+      128
+    ],
+    "sha256": "13b0e4f4b7f669a551cde4eab648cc6bc98c785f0965152a542e2bd01a71b783"
+  },
+  "optimized_cold": {
+    "repeat": 1,
+    "samples_ms": [
+      12.217185000054087
+    ],
+    "median_ms": 12.217185000054087,
+    "p95_ms": 12.217185000054087,
+    "min_ms": 12.217185000054087
+  },
+  "optimized_warm": {
+    "repeat": 5,
+    "samples_ms": [
+      5.721005000168589,
+      5.240716000116663,
+      5.358528999977352,
+      4.330469000024095,
+      4.663824999852295
+    ],
+    "median_ms": 5.240716000116663,
+    "p95_ms": 5.648509800130341,
+    "min_ms": 4.330469000024095
+  },
+  "naive_warm": {
+    "repeat": 5,
+    "samples_ms": [
+      1175.2046470001005,
+      779.298972000106,
+      769.2024789998868,
+      770.2407189999576,
+      788.4779339999568
+    ],
+    "median_ms": 779.298972000106,
+    "p95_ms": 1097.8593044000718,
+    "min_ms": 769.2024789998868
+  },
+  "median_speedup_for_this_case": 148.70085919228558,
+  "identical_numerical_results": true,
+  "source_dtype_retained": true,
+  "source_bytes_unchanged": true,
+  "conversion_work": {
+    "naive_float64_values_converted": 402653184,
+    "optimized_float64_values_converted": 147456
+  },
+  "rolling_ball_case": {
+    "shape": [
+      256,
+      384
+    ],
+    "radius_px": 12,
+    "repeat": 1,
+    "samples_ms": [
+      137.41561799997726
+    ],
+    "median_ms": 137.41561799997726,
+    "p95_ms": 137.41561799997726,
+    "min_ms": 137.41561799997726,
+    "net_integral": 15378032.226811942,
+    "finite_result": true
+  },
+  "limitations": [
+    "Timings reflect this machine and synthetic workload only.",
+    "No inference about real-image detection accuracy or industry-wide speed is warranted.",
+    "The naive baseline is intentionally redundant and is not a measured upstream app."
+  ]
+}

@@ -1,0 +1,139 @@
+{
+  "recorded_at": "2026-11-11T15:18:35.721944+00:00",
+  "scope": "Real official-model CPU execution on a deterministic synthetic fixture; not biological accuracy validation.",
+  "fixture": {
+    "shape": [
+      160,
+      192
+    ],
+    "dtype": "uint16",
+    "sha256": "c7741268774828a8f51d95ee378f83d1b01a38189a06a98163f8777a0b01df6c",
+    "constructed_gaussian_objects": 6,
+    "generator": "synthetic_fixture in smoke_cellpose_cpu.py"
+  },
+  "host": {
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+    "python": "3.12.14",
+    "logical_cpus": 9
+  },
+  "runs": [
+    {
+      "model": "nuclei",
+      "count": 6,
+      "foreground_area_px": 2175,
+      "wall_ms": 7552.947946999666,
+      "worker_record": {
+        "available": true,
+        "cellpose_version": "3.1.1.3",
+        "torch_version": "2.7.1+cpu",
+        "numpy_version": "2.0.2",
+        "python_version": "3.12.14",
+        "device": "cpu",
+        "numba_threading_layer_requested": "workqueue",
+        "cpu_threads": 2,
+        "dependencies": {
+          "scipy": "1.18.1",
+          "numba": "0.68.1",
+          "llvmlite": "0.50.0",
+          "opencv-python-headless": "5.0.0.93",
+          "imagecodecs": "2026.3.6",
+          "fastremap": "1.21.0"
+        },
+        "model": "nuclei",
+        "weights_filename": "nucleitorch_0",
+        "weights_sha256": "89ca45e4a45048d5010d29621466b1274b91b3dcb9714dce9f9e90a9a8671303",
+        "weights_source_url": "https://www.cellpose.org/models/nucleitorch_0",
+        "parameters": {
+          "model": "nuclei",
+          "diameter_px": 17.0,
+          "flow_threshold": 0.4,
+          "cellprob_threshold": 0.0,
+          "min_area": 20,
+          "niter": 200,
+          "threads": 2,
+          "normalize": true,
+          "normalization": {
+            "normalize": true,
+            "percentile": [
+              1.0,
+              99.0
+            ]
+          },
+          "model_channels": [
+            0,
+            0
+          ]
+        },
+        "native_output_shape": [
+          160,
+          192
+        ],
+        "inference_ms": 420.60646699974313,
+        "numba_threading_layer": "workqueue",
+        "numba_num_threads": 2,
+        "network_download_performed": false
+      },
+      "source_unchanged": true,
+      "all_centroids_inside_source": true
+    },
+    {
+      "model": "cyto3",
+      "count": 6,
+      "foreground_area_px": 7689,
+      "wall_ms": 6426.940866000223,
+      "worker_record": {
+        "available": true,
+        "cellpose_version": "3.1.1.3",
+        "torch_version": "2.7.1+cpu",
+        "numpy_version": "2.0.2",
+        "python_version": "3.12.14",
+        "device": "cpu",
+        "numba_threading_layer_requested": "workqueue",
+        "cpu_threads": 2,
+        "dependencies": {
+          "scipy": "1.18.1",
+          "numba": "0.68.1",
+          "llvmlite": "0.50.0",
+          "opencv-python-headless": "5.0.0.93",
+          "imagecodecs": "2026.3.6",
+          "fastremap": "1.21.0"
+        },
+        "model": "cyto3",
+        "weights_filename": "cyto3",
+        "weights_sha256": "2dc3087a8abd7da46d1ab0ddd5824639933cc3ff63b382af3fa1939a392db93c",
+        "weights_source_url": "https://www.cellpose.org/models/cyto3",
+        "parameters": {
+          "model": "cyto3",
+          "diameter_px": 25.0,
+          "flow_threshold": 0.4,
+          "cellprob_threshold": 0.0,
+          "min_area": 20,
+          "niter": 200,
+          "threads": 2,
+          "normalize": true,
+          "normalization": {
+            "normalize": true,
+            "percentile": [
+              1.0,
+              99.0
+            ]
+          },
+          "model_channels": [
+            0,
+            0
+          ]
+        },
+        "native_output_shape": [
+          160,
+          192
+        ],
+        "inference_ms": 1199.7284960007164,
+        "numba_threading_layer": "workqueue",
+        "numba_num_threads": 2,
+        "network_download_performed": false
+      },
+      "source_unchanged": true,
+      "all_centroids_inside_source": true
+    }
+  ]
+}

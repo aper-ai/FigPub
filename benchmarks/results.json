@@ -1,0 +1,516 @@
+{
+  "version": "0.1.0",
+  "recorded_at_utc": "2026-11-11T09:00:13.874169+00:00",
+  "synthetic_data": true,
+  "not_an_upstream_application_benchmark": true,
+  "reports": {
+    "wb_roi": {
+      "benchmark_version": 1,
+      "synthetic_data": true,
+      "comparison_scope": "same float64 border-median net integral; naive full-frame-per-ROI conversion vs ROI-first conversion",
+      "not_an_upstream_application_benchmark": true,
+      "environment": {
+        "platform": "Linux-6.18.57-x86_64-with-glibc2.41",
+        "python": "3.12.14",
+        "numpy": "2.5.4",
+        "scipy": "1.18.1",
+        "skimage": "0.26.0",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C",
+        "logical_cpu_count": 9,
+        "cpu_affinity_count": 9
+      },
+      "fixture": {
+        "shape": [
+          4096,
+          4096
+        ],
+        "dtype": "uint16",
+        "roi_count": 24,
+        "roi_shape": [
+          48,
+          128
+        ],
+        "sha256": "13b0e4f4b7f669a551cde4eab648cc6bc98c785f0965152a542e2bd01a71b783"
+      },
+      "optimized_cold": {
+        "repeat": 1,
+        "samples_ms": [
+          12.217185000054087
+        ],
+        "median_ms": 12.217185000054087,
+        "p95_ms": 12.217185000054087,
+        "min_ms": 12.217185000054087
+      },
+      "optimized_warm": {
+        "repeat": 5,
+        "samples_ms": [
+          5.721005000168589,
+          5.240716000116663,
+          5.358528999977352,
+          4.330469000024095,
+          4.663824999852295
+        ],
+        "median_ms": 5.240716000116663,
+        "p95_ms": 5.648509800130341,
+        "min_ms": 4.330469000024095
+      },
+      "naive_warm": {
+        "repeat": 5,
+        "samples_ms": [
+          1175.2046470001005,
+          779.298972000106,
+          769.2024789998868,
+          770.2407189999576,
+          788.4779339999568
+        ],
+        "median_ms": 779.298972000106,
+        "p95_ms": 1097.8593044000718,
+        "min_ms": 769.2024789998868
+      },
+      "median_speedup_for_this_case": 148.70085919228558,
+      "identical_numerical_results": true,
+      "source_dtype_retained": true,
+      "source_bytes_unchanged": true,
+      "conversion_work": {
+        "naive_float64_values_converted": 402653184,
+        "optimized_float64_values_converted": 147456
+      },
+      "rolling_ball_case": {
+        "shape": [
+          256,
+          384
+        ],
+        "radius_px": 12,
+        "repeat": 1,
+        "samples_ms": [
+          137.41561799997726
+        ],
+        "median_ms": 137.41561799997726,
+        "p95_ms": 137.41561799997726,
+        "min_ms": 137.41561799997726,
+        "net_integral": 15378032.226811942,
+        "finite_result": true
+      },
+      "limitations": [
+        "Timings reflect this machine and synthetic workload only.",
+        "No inference about real-image detection accuracy or industry-wide speed is warranted.",
+        "The naive baseline is intentionally redundant and is not a measured upstream app."
+      ]
+    },
+    "gel_localization": {
+      "benchmark_version": 1,
+      "synthetic_data": true,
+      "environment": {
+        "node": "v24.22.1",
+        "platform": "linux",
+        "cpu": "INTEL(R) XEON(R) PLATINUM 8573C"
+      },
+      "scope": "New projection/grid localization core only; excludes I/O, worker startup and marker catalogue matching.",
+      "cases": [
+        {
+          "width": 640,
+          "height": 360,
+          "input_bytes": 921600,
+          "expected_lanes": 6,
+          "detected_lanes": 6,
+          "detected_bands": 24,
+          "cold_ms": 67.52478399999998,
+          "samples_ms": [
+            20.893943999999976,
+            23.104743000000013,
+            22.407160999999974,
+            21.044167000000016,
+            51.48484100000002,
+            31.49259999999998,
+            27.30446699999999
+          ],
+          "median_ms": 23.104743000000013,
+          "max_ms": 51.48484100000002
+        },
+        {
+          "width": 1024,
+          "height": 1024,
+          "input_bytes": 4194304,
+          "expected_lanes": 12,
+          "detected_lanes": 12,
+          "detected_bands": 48,
+          "cold_ms": 66.01130800000004,
+          "samples_ms": [
+            61.22442900000004,
+            59.67554800000005,
+            54.36725799999999,
+            44.02317400000004,
+            56.56707400000005,
+            68.32660899999996,
+            65.56219099999998
+          ],
+          "median_ms": 59.67554800000005,
+          "max_ms": 68.32660899999996
+        }
+      ],
+      "limitations": [
+        "Synthetic fixtures do not establish accuracy on real experimental images.",
+        "Not a benchmark of GelFigure or ScieFig; no industry-leading performance claim."
+      ]
+    },
+    "binary_transport": {
+      "benchmark_version": 1,
+      "synthetic_data": true,
+      "python": "3.12.14",
+      "scope": "FastAPI in-process TestClient, cached 1024x1024 localization view of a 4096x4096 uint16 source; includes response serialization, excludes network/worker calculation.",
+      "same_values": true,
+      "cases": {
+        "binary": {
+          "cold_ms": 109.45016300001953,
+          "samples_ms": [
+            11.881816999903094,
+            8.578851000038412,
+            7.904785999926389,
+            7.917987999917386,
+            4.567930000121123
+          ],
+          "median_ms": 7.917987999917386,
+          "p95_ms": 11.221223799930158,
+          "response_bytes": 4194304,
+          "content_type": "application/octet-stream"
+        },
+        "json": {
+          "cold_ms": 1187.6032879999912,
+          "samples_ms": [
+            1133.4481140002026,
+            1176.3761339998382,
+            1241.9281580000643,
+            1125.1772660002644,
+            1186.679145999733
+          ],
+          "median_ms": 1176.3761339998382,
+          "p95_ms": 1230.878355599998,
+          "response_bytes": 20119328,
+          "content_type": "application/json"
+        }
+      },
+      "limitations": [
+        "Not a throughput or latency claim for all machines.",
+        "These pixels are for localization only; analysis uses the original uint16 image.",
+        "Not an upstream application comparison."
+      ]
+    },
+    "recipe_history": {
+      "benchmark": "frontend-recipe-snapshot",
+      "data": "synthetic geometry payload; no experimental measurements",
+      "node_version": "v24.22.1",
+      "object_count": 1000,
+      "contour_points_per_object": 128,
+      "recipe_samples": 100,
+      "recipe_median_ms": 0.02525900000000547,
+      "recipe_p95_ms": 0.11285599999973783,
+      "full_project_clone_single_sample_ms": 226.45652900000005,
+      "recipe_serialized_bytes": 492,
+      "full_project_serialized_bytes": 4917230,
+      "immutable_results_excluded": true,
+      "note": "Serialized byte counts are payload sizes, not heap memory measurements; timing is machine-dependent."
+    },
+    "svg_rendering": {
+      "scope": "Synthetic quadrant PDF cropped to a smaller region, flipped, rotated, and exported to SVG; CJK/Greek labels checked for visible glyphs. No experimental biomedical data.",
+      "pixel_comparison": {
+        "dpi": 144,
+        "channels": "RGB uint8",
+        "metric": "mean absolute channel difference over whole canvas",
+        "acceptance_max_mae": 1.2
+      },
+      "chromium": {
+        "renderer": "Chromium Headless Shell 159.0.8154.2",
+        "results": [
+          {
+            "case": 0,
+            "flip_h": false,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": false,
+            "chromium_vs_pdf_mae_144dpi": 0.7819591802686894,
+            "chinese_and_latin_ink_pixels": 2264
+          },
+          {
+            "case": 0,
+            "flip_h": false,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": true,
+            "chromium_vs_pdf_mae_144dpi": 0.44238826062381614,
+            "chinese_and_latin_ink_pixels": 2271
+          },
+          {
+            "case": 1,
+            "flip_h": true,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": false,
+            "chromium_vs_pdf_mae_144dpi": 0.7878923420695977,
+            "chinese_and_latin_ink_pixels": 2264
+          },
+          {
+            "case": 1,
+            "flip_h": true,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": true,
+            "chromium_vs_pdf_mae_144dpi": 0.44848394196662067,
+            "chinese_and_latin_ink_pixels": 2271
+          },
+          {
+            "case": 2,
+            "flip_h": false,
+            "flip_v": true,
+            "rotation": 0,
+            "outlined": false,
+            "chromium_vs_pdf_mae_144dpi": 0.7973285430818211,
+            "chinese_and_latin_ink_pixels": 2264
+          },
+          {
+            "case": 2,
+            "flip_h": false,
+            "flip_v": true,
+            "rotation": 0,
+            "outlined": true,
+            "chromium_vs_pdf_mae_144dpi": 0.4577576234369479,
+            "chinese_and_latin_ink_pixels": 2271
+          },
+          {
+            "case": 3,
+            "flip_h": true,
+            "flip_v": true,
+            "rotation": 23,
+            "outlined": false,
+            "chromium_vs_pdf_mae_144dpi": 0.6866469821463415,
+            "chinese_and_latin_ink_pixels": 2264
+          },
+          {
+            "case": 3,
+            "flip_h": true,
+            "flip_v": true,
+            "rotation": 23,
+            "outlined": true,
+            "chromium_vs_pdf_mae_144dpi": 0.3467596527738826,
+            "chinese_and_latin_ink_pixels": 2271
+          }
+        ]
+      },
+      "inkscape": {
+        "renderer": "Inkscape 1.4",
+        "results": [
+          {
+            "case": 0,
+            "flip_h": false,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": false,
+            "has_cjk": false,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.0,
+            "embedded_raster_images": 0,
+            "vector_drawings": 5
+          },
+          {
+            "case": 0,
+            "flip_h": false,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": true,
+            "has_cjk": true,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.20705133460184869,
+            "embedded_raster_images": 0,
+            "vector_drawings": 17
+          },
+          {
+            "case": 1,
+            "flip_h": true,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": false,
+            "has_cjk": false,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.0,
+            "embedded_raster_images": 0,
+            "vector_drawings": 5
+          },
+          {
+            "case": 1,
+            "flip_h": true,
+            "flip_v": false,
+            "rotation": 0,
+            "outlined": true,
+            "has_cjk": true,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.20705133460184869,
+            "embedded_raster_images": 0,
+            "vector_drawings": 17
+          },
+          {
+            "case": 2,
+            "flip_h": false,
+            "flip_v": true,
+            "rotation": 0,
+            "outlined": false,
+            "has_cjk": false,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.0,
+            "embedded_raster_images": 0,
+            "vector_drawings": 5
+          },
+          {
+            "case": 2,
+            "flip_h": false,
+            "flip_v": true,
+            "rotation": 0,
+            "outlined": true,
+            "has_cjk": true,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.20705133460184869,
+            "embedded_raster_images": 0,
+            "vector_drawings": 17
+          },
+          {
+            "case": 3,
+            "flip_h": true,
+            "flip_v": true,
+            "rotation": 23,
+            "outlined": false,
+            "has_cjk": false,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.0032710054110857505,
+            "embedded_raster_images": 0,
+            "vector_drawings": 5
+          },
+          {
+            "case": 3,
+            "flip_h": true,
+            "flip_v": true,
+            "rotation": 23,
+            "outlined": true,
+            "has_cjk": true,
+            "inkscape_vs_direct_pdf_mae_144dpi": 0.21032234001293446,
+            "embedded_raster_images": 0,
+            "vector_drawings": 17
+          }
+        ]
+      },
+      "all_passed": true
+    }
+  },
+  "validation": {
+    "version": "0.1.0",
+    "recorded_at_utc": "2026-11-11T09:00:13.874169+00:00",
+    "synthetic_data": true,
+    "environment": {
+      "os": "Linux x86-64",
+      "cpu": "Intel Xeon Platinum 8573C",
+      "python": "3.12.14",
+      "node": "24.22.1",
+      "browser": "Chrome Headless Shell 159.0.8154.2"
+    },
+    "python": {
+      "command": "python -m pytest -q",
+      "tests": 112,
+      "passed": 112,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "seconds": 25.774,
+      "warnings": 2,
+      "warning_scope": [
+        "AnyIO pytest plugin alias deprecation",
+        "FastAPI/httpx integration deprecation"
+      ],
+      "modules": {
+        "tests.test_analysis": 25,
+        "tests.test_api": 9,
+        "tests.test_charts": 9,
+        "tests.test_exports": 9,
+        "tests.test_launcher": 1,
+        "tests.test_migration": 21,
+        "tests.test_preflight": 6,
+        "tests.test_storage": 11,
+        "tests.test_vector_fonts": 9,
+        "tests.test_vectors": 12
+      }
+    },
+    "javascript": {
+      "command": "npm test",
+      "tests": 29,
+      "passed": 29,
+      "failed": 0,
+      "skipped": 0,
+      "duration_ms": 780.472053,
+      "groups": {
+        "frontend_domain_and_state": 13,
+        "analysis_identity": 10,
+        "gel_engine": 6
+      }
+    },
+    "lint": {
+      "command": "npm run lint",
+      "tool": "oxlint 1.93.0",
+      "passed": true,
+      "errors": 0
+    },
+    "browser": {
+      "synthetic_data": true,
+      "scenarios": [
+        {
+          "name": "empty workspace and synthetic demo",
+          "passed": true,
+          "elapsed_ms": 2452.56
+        },
+        {
+          "name": "drag, undo/redo, transform, keyboard focus",
+          "passed": true,
+          "elapsed_ms": 3003.44
+        },
+        {
+          "name": "binary worker localization and manual marker calibration",
+          "passed": true,
+          "elapsed_ms": 1160.89
+        },
+        {
+          "name": "WB ROI identities, n=1, CSV, result invalidation and source isolation",
+          "passed": true,
+          "elapsed_ms": 2043.31
+        },
+        {
+          "name": "qPCR technical aggregation and actual-data vector chart",
+          "passed": true,
+          "elapsed_ms": 3156.44
+        },
+        {
+          "name": "microscopy CPU segmentation and source overlay",
+          "passed": true,
+          "elapsed_ms": 1420.8
+        },
+        {
+          "name": "source PPI checks, five file exports, complete project reopen",
+          "passed": true,
+          "elapsed_ms": 12741.31
+        },
+        {
+          "name": "16-bit file picker import and compact desktop layout",
+          "passed": true,
+          "elapsed_ms": 521.98
+        }
+      ],
+      "browser_errors": [],
+      "passed": true
+    },
+    "svg_cross_renderer": {
+      "report": "svg_rendering_results.json",
+      "chromium_cases": 8,
+      "inkscape_cases": 8,
+      "all_passed": true,
+      "maximum_accepted_mae": 1.2,
+      "dpi": 144
+    },
+    "launcher_dependency_check": {
+      "command": "python run.py --check",
+      "passed": true
+    },
+    "limitations": [
+      "Windows installation and Office rendering have not been tested on a real Windows system.",
+      "No same-machine end-to-end comparison against the upstream applications.",
+      "Synthetic data tests do not establish real-image localization or segmentation accuracy.",
+      "The package is source plus launchers, not a signed executable installer."
+    ]
+  }
+}
