@@ -1,0 +1,116 @@
+name: Publish verified FigPub interface screenshots
+
+on:
+  push:
+    paths:
+      - .github/workflows/figpub-interface-gallery.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: figpub-interface-gallery
+  cancel-in-progress: false
+
+jobs:
+  capture-and-publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PYTHONUTF8: '1'
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install real application test dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+      - name: Capture application workflows with real Chromium
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results/readme
+          for suite in browser_professional_ui browser_wb_workflow browser_channels browser_histology_fibers browser_instance_review browser_composition; do
+            echo "::group::Actual application UI: $suite"
+            FW_BROWSER_RESULTS="test-results/readme/$suite" python "tests/$suite.py"
+            echo "::endgroup::"
+          done
+      - name: Verify actual screenshots and update documentation
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import hashlib, json, shutil
+
+          root = Path('test-results/readme')
+          target = Path('docs/screenshots/product')
+          target.mkdir(parents=True, exist_ok=True)
+          entries = [
+              ('工作台首页', '统一的科研图像和数据任务入口。', 'browser_professional_ui/home-1440.png', 'home.png'),
+              ('Western blot 定量', '条带 ROI、定量结果和可编辑组图。', 'browser_wb_workflow/01-wb-figure.png', 'wb.png'),
+              ('qPCR 分析', 'Ct 数据处理、生物学重复汇总与结果检查。', 'browser_professional_ui/analysis-results-1440.png', 'qpcr.png'),
+              ('多通道显微图像', '通道伪彩、分屏显示与图像处理。', 'browser_channels/01-multichannel-split.png', 'microscopy.png'),
+              ('组织与纤维分析', '组织图像定量及形态学工作流程。', 'browser_histology_fibers/histology-fiber-workflow.png', 'histology.png'),
+              ('实例人工复核', '分割实例编辑、测量结果复核与工程恢复。', 'browser_instance_review/instance-review-restored.png', 'instance-review.png'),
+              ('科研组图', '图稿画布、对象布局、标注与导出。', 'browser_composition/composition.png', 'composition.png')
+          ]
+          gallery, manifest = [], []
+          for title, caption, src, dest in entries:
+              source = root / src
+              if not source.is_file() or source.stat().st_size < 5000:
+                  raise SystemExit(f'Missing valid real application screenshot: {source}')
+              with Image.open(source) as im:
+                  im.verify()
+              with Image.open(source) as im:
+                  width, height = im.size
+              if width < 700 or height < 500:
+                  raise SystemExit(f'Unexpected screenshot dimensions: {src}: {width}x{height}')
+              destination = target / dest
+              shutil.copyfile(source, destination)
+              digest = hashlib.sha256(destination.read_bytes()).hexdigest()
+              manifest.append(dict(module=title, file=dest, source_suite=src,
+                                   width=width, height=height, sha256=digest,
+                                   kind='real_application_screenshot_with_synthetic_test_data'))
+              gallery.extend([f'### {title}', '', f'![{title} — FigPub 实际界面]({destination.as_posix()})', '',
+                              caption, ''])
+          (target/'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2)+'\n',encoding='utf-8')
+          readme = Path('README.md')
+          text = readme.read_text(encoding='utf-8')
+          begin, end = '<!-- FIGPUB_GALLERY_START -->', '<!-- FIGPUB_GALLERY_END -->'
+          if text.count(begin) != 1 or text.count(end) != 1:
+              raise SystemExit('README screenshot anchors missing or duplicated')
+          start = text.index(begin)+len(begin)
+          stop = text.index(end)
+          if start >= stop:
+              raise SystemExit('README screenshot anchors in wrong order')
+          text = text[:start] + '\n\n' + '\n'.join(gallery).rstrip() + '\n\n' + text[stop:]
+          readme.write_text(text, encoding='utf-8')
+          print('Verified and embedded',len(manifest),'real UI screenshots.')
+          PY
+      - name: Preserve evidence for image provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: figpub-ui-capture-${{ github.sha }}
+          path: test-results/readme/
+          retention-days: 30
+          if-no-files-found: warn
+      - name: Commit actual screenshots and README to main
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md docs/screenshots/product/
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo "No screenshot changes."
+            exit 0
+          fi
+          git commit -m "Add verified real application screenshots to FigPub product README"
+          git push origin HEAD:main
