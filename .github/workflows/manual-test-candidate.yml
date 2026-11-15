@@ -61,7 +61,7 @@ jobs:
           npm ci
           if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
 
-      - name: Verify installer prerequisites before payload assembly
+      - name: Verify signed prerequisites, compiler engine identity and setup syntax
         run: |
           python packaging/fetch_webview2_bootstrapper.py --output .ci-webview/MicrosoftEdgeWebview2Setup.exe --record .ci-manual-test/webview-bootstrapper.json
           if ($LASTEXITCODE -ne 0) { throw 'Microsoft WebView2 bootstrapper verification failed.' }

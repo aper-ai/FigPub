@@ -16,6 +16,7 @@ import shutil
 import struct
 import subprocess
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -48,19 +49,48 @@ def verified_payload(toolkit: Path, expected_commit: str) -> tuple[dict, str]:
 
 def find_compiler(explicit: Path | None = None) -> tuple[Path, dict]:
     candidates = [explicit] if explicit else [
-        Path(found) if (found := shutil.which('ISCC.exe')) else None,
         Path(os.environ.get('ProgramFiles(x86)', 'C:/Program Files (x86)')) / 'Inno Setup 6/ISCC.exe',
-        Path(os.environ.get('LOCALAPPDATA', '')) / 'Programs/Inno Setup 6/ISCC.exe',
+        Path(local) / 'Programs/Inno Setup 6/ISCC.exe' if (local := os.environ.get('LOCALAPPDATA')) else None,
+        Path(found) if (found := shutil.which('ISCC.exe')) else None,
     ]
-    compiler = next((path.resolve() for path in candidates if path and path.is_file() and not path.is_symlink()), None)
+
+    def distribution(path):
+        if not path or not path.is_file() or path.is_symlink():
+            return False
+        engine = path.with_name('ISCmplr.dll')
+        return engine.is_file() and not engine.is_symlink()
+
+    compiler = next((path.resolve() for path in candidates if distribution(path)), None)
     if compiler is None:
-        raise ValueError('The Windows runner must provide the pinned Inno Setup compiler.')
+        raise ValueError('The Windows runner must provide the real Inno Setup compiler beside ISCmplr.dll.')
+    engine = compiler.with_name('ISCmplr.dll')
     metadata = windows_file_metadata(compiler)
-    found = re.match(r'(\d+\.\d+\.\d+)(?:\.|$)', metadata.get('file_version', ''))
-    if not found or found.group(1) != COMPILER_VERSION:
-        raise ValueError(f'Expected Inno Setup {COMPILER_VERSION}, found {metadata.get("file_version")!r}.')
+    engine_metadata = windows_file_metadata(engine)
+    # Inno 6.7.1 PE resources can say 0.0.0.0; ask the loaded engine instead.
+    # /? exits before loading it, and /Q or /Qp hides its version banner.
+    with tempfile.TemporaryDirectory(prefix='fw-compiler-version-') as temporary:
+        root = Path(temporary).resolve()
+        output = root / 'output'
+        output.mkdir()
+        script = ('[Setup]\nAppName=CompilerVersionProbe\nAppVersion=1.0\n'
+                  'DefaultDirName={autopf}\\CompilerVersionProbe\nUninstallable=no\n'
+                  f'Output=no\nOutputDir={output}\nOutputBaseFilename=compiler-version-probe\n')
+        probe = subprocess.run([str(compiler), '/O-', '-'], input=script.encode('utf-8'),
+                               capture_output=True, cwd=root, timeout=30)
+        stdout = probe.stdout.decode('utf-8', 'replace')
+        banners = [line.strip() for line in stdout.splitlines()
+                   if line.startswith('Compiler engine version: ')]
+        expected_banner = f'Compiler engine version: Inno Setup {COMPILER_VERSION}'
+        if probe.returncode or banners != [expected_banner]:
+            diagnostic = (stdout + probe.stderr.decode('utf-8', 'replace'))[-4000:]
+            raise ValueError(f'Expected Inno Setup {COMPILER_VERSION} compiler engine at {compiler}; '
+                             f'probe exited {probe.returncode}.\n{diagnostic}')
+        if any(output.iterdir()):
+            raise ValueError('Compiler version probe unexpectedly emitted installer files.')
     return compiler, {'file': str(compiler), 'version': COMPILER_VERSION,
-                      'sha256': digest(compiler), 'pe_metadata': metadata}
+                      'sha256': digest(compiler), 'pe_metadata': metadata,
+                      'engine': {'file': str(engine), 'sha256': digest(engine), 'pe_metadata': engine_metadata},
+                      'version_probe': {'returncode': probe.returncode, 'banner': banners[0], 'output_disabled': True}}
 
 
 def check_setup_executable(path: Path) -> None:
