@@ -35,16 +35,18 @@ class Surface:
 
     def snapshot(self):
         return self.page.evaluate("""({svg,groups})=>Array.from(document.querySelector(svg).querySelectorAll(':scope > '+groups)).filter(g=>g.querySelector('image')).map(g=>{
-          const m=g.transform.baseVal.consolidate().matrix,rect=g.querySelector('.panel-hit')||g.querySelector('clipPath rect'),label=g.querySelector('.panel-label')||g.querySelector(':scope > text');
+          const m=g.transform.baseVal.getItem(0).matrix,rect=g.querySelector('.panel-hit')||g.querySelector('clipPath rect'),label=g.querySelector('.panel-label')||g.querySelector(':scope > text');
           return {id:g.dataset.panelId||g.dataset.object,x:m.e,y:m.f,width:Number(rect.getAttribute('width')),height:Number(rect.getAttribute('height')),
             label:label?.textContent||'',labelX:m.e+Number(label?.getAttribute('x')||0),labelY:m.f+Number(label?.getAttribute('y')||0)};
         })""", {'svg': self.svg, 'groups': self.groups})
 
     def metric(self):
-        return self.page.locator(self.svg).evaluate('(svg)=>{const m=svg.getScreenCTM();return {a:m.a,b:m.b,c:m.c,d:m.d,e:m.e,f:m.f,scale:Math.hypot(m.a,m.b)}}')
+        # Selection can synchronously replace the SVG. Flush its layout before
+        # reading the screen matrix; Chromium may otherwise return identity.
+        return self.page.locator(self.svg).evaluate('(svg)=>{const bounds=svg.getBoundingClientRect();if(!bounds.width||!bounds.height)throw new Error("Canvas has no visible layout");const m=svg.getScreenCTM();return {a:m.a,b:m.b,c:m.c,d:m.d,e:m.e,f:m.f,scale:Math.hypot(m.a,m.b)}}')
 
-    def screen(self, x, y):
-        matrix = self.metric()
+    def screen(self, x, y, matrix=None):
+        matrix = self.metric() if matrix is None else matrix
         return matrix['a'] * x + matrix['c'] * y + matrix['e'], matrix['b'] * x + matrix['d'] * y + matrix['f']
 
     def clear_selection(self):
@@ -102,8 +104,8 @@ class Surface:
         if select_only:
             self.clear_selection()
         panel = self.snapshot()[index]
-        start = self.screen(panel['x'] + panel['width'] * .3, panel['y'] + panel['height'] * .5)
         matrix = self.metric()
+        start = self.screen(panel['x'] + panel['width'] * .3, panel['y'] + panel['height'] * .5, matrix)
         self.current_trace = {'surface': self.kind, 'panel_id': panel['id'], 'start': start,
                               'dx_mm': dx, 'dy_mm': dy, 'alt': alt, 'matrix': matrix}
         self.report.setdefault('pointer_traces', []).append(self.current_trace)
@@ -112,6 +114,7 @@ class Surface:
             self.page.keyboard.down('Alt')
         self.page.mouse.move(*start)
         self.current_trace['hit_before_down'] = self.pointer_hit(start)
+        assert self.current_trace['hit_before_down']['object'] == panel['id'], self.current_trace
         self.page.mouse.down()
         self.current_trace['state_after_down'] = self.pointer_hit(start)
         self.current_trace['events_after_down'] = self.page.evaluate('()=>window.__alignmentPointerEvents')

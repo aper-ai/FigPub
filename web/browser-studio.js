@@ -427,7 +427,14 @@ document.addEventListener('submit', event => {
   if (beginParameterEdit(form)) { pendingParameterForm = form; finishParameterEdit(); }
 });
 $('#export-format').addEventListener('change', exportNote); $('#export-dpi').addEventListener('change', exportNote); $('#export-confirm').addEventListener('click', performExport);
-function canvasPoint(event) { const svg = $('#studio-svg'), matrix = svg.getScreenCTM(); return new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse()); }
+function canvasPoint(event) {
+  const svg = $('#studio-svg');
+  // Selecting an object rebuilds this SVG synchronously. Flush its CSS layout
+  // before reading the screen matrix; a freshly inserted SVG can still return
+  // an identity matrix and interpret screen pixels as figure millimetres.
+  svg.getBoundingClientRect();
+  return new DOMPoint(event.clientX, event.clientY).matrixTransform(svg.getScreenCTM().inverse());
+}
 $('#canvas-wrap').addEventListener('pointerdown', event => {
   if (busy || gesture || event.button !== 0) return; const target = event.target.closest('[data-object]'), resize = event.target.closest('[data-resize]');
   finishParameterEdit({discardInvalid: true});

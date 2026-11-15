@@ -67,7 +67,7 @@ jobs:
       - name: Install Chromium for the alignment regression
         run: python -m playwright install chromium
 
-      - name: Verify real label alignment and pointer snapping in both studios
+      - name: Verify real pointer hits, label alignment and snapping in both studios
         env:
           FW_ALIGNMENT_RESULTS: .ci-manual-test/alignment-snap
         run: python tests/browser_alignment_snap.py

@@ -74,23 +74,33 @@ async function fixture(t){
   return {window,doc,$,downloads,edit,click,save,geometry,select,key};
 }
 
-test('a canvas image receives pointer selection and a committed drag after clearing the selection',async t=>{
+test('canvas selection uses laid-out screen coordinates and commits a drag after rebuilding the SVG',async t=>{
   const {window,doc,$,geometry}=await fixture(t);
-  window.DOMPoint=class {constructor(x,y){this.x=x;this.y=y;}matrixTransform(){return {x:this.x,y:this.y};}};
-  window.SVGSVGElement.prototype.getScreenCTM=()=>({a:1,b:0,inverse:()=>({})});
+  const laidOut=new WeakSet(),scale=4,offsetX=200,offsetY=100;
+  window.DOMPoint=class {constructor(x,y){this.x=x;this.y=y;}matrixTransform(matrix){return {x:this.x*matrix.a+matrix.e,y:this.y*matrix.d+matrix.f};}};
+  // Emulate the real Chromium failure: a newly inserted SVG reports identity
+  // until layout is current. Geometry assertions must hold at a non-unit zoom.
+  window.SVGSVGElement.prototype.getBoundingClientRect=function(){laidOut.add(this);return {x:offsetX,y:offsetY,width:720,height:480};};
+  window.SVGSVGElement.prototype.getScreenCTM=function(){
+    const ready=laidOut.has(this),a=ready?scale:1,e=ready?offsetX:0,f=ready?offsetY:0;
+    return {a,b:0,inverse:()=>({a:1/a,d:1/a,e:-e/a,f:-f/a})};
+  };
   const pointer=(target,type,x,y)=>target.dispatchEvent(new window.PointerEvent(type,{bubbles:true,button:0,buttons:type==='pointerup'?0:1,pointerId:7,clientX:x,clientY:y,altKey:true}));
-  pointer($('#studio-svg > rect'),'pointerdown',2,2);
-  pointer(window,'pointerup',2,2);
+  pointer($('#studio-svg > rect'),'pointerdown',offsetX+2*scale,offsetY+2*scale);
+  pointer(window,'pointerup',offsetX+2*scale,offsetY+2*scale);
   assert.equal($('#selection-info').textContent,'未选中对象');
   const panel=doc.querySelectorAll('#studio-svg > [data-object]')[2],before=geometry()[2];
-  const coordinates=before.transform.match(/translate\(([-\d.]+) ([-\d.]+)\)/),x=Number(coordinates[1])+10,y=Number(coordinates[2])+10;
+  const coordinates=before.transform.match(/translate\(([-\d.]+) ([-\d.]+)\)/),originalX=Number(coordinates[1]),originalY=Number(coordinates[2]);
+  const x=offsetX+(originalX+10)*scale,y=offsetY+(originalY+10)*scale;
   pointer(panel.querySelector('image'),'pointerdown',x,y);
   assert.equal($('#selection-info').textContent,'已选择 1 个对象');
   assert.equal($('#studio-svg .selection-outline')?.parentElement.dataset.object,before.id);
-  pointer(window,'pointermove',x+8,y+5);
+  pointer(window,'pointermove',x+8*scale,y+5*scale);
   await until(()=>geometry()[2].transform!==before.transform,'canvas image did not move');
-  pointer(window,'pointerup',x+8,y+5);
-  assert.notEqual(geometry()[2].transform,before.transform);
+  pointer(window,'pointerup',x+8*scale,y+5*scale);
+  const after=geometry()[2].transform.match(/translate\(([-\d.]+) ([-\d.]+)\)/);
+  assert.ok(Math.abs(Number(after[1])-originalX-8)<1e-6);
+  assert.ok(Math.abs(Number(after[2])-originalY-5)<1e-6);
   assert.equal($('#snap-guides').childElementCount,0);
 });
 
