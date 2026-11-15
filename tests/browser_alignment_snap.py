@@ -41,9 +41,24 @@ class Surface:
         })""", {'svg': self.svg, 'groups': self.groups})
 
     def metric(self):
-        # Selection can synchronously replace the SVG. Flush its layout before
-        # reading the screen matrix; Chromium may otherwise return identity.
-        return self.page.locator(self.svg).evaluate('(svg)=>{const bounds=svg.getBoundingClientRect();if(!bounds.width||!bounds.height)throw new Error("Canvas has no visible layout");const m=svg.getScreenCTM();return {a:m.a,b:m.b,c:m.c,d:m.d,e:m.e,f:m.f,scale:Math.hypot(m.a,m.b)}}')
+        # Selection, fonts and resize can replace the SVG between locator
+        # resolution and evaluation. Query and measure the live canvas in one
+        # browser task, waiting only for its observable layout readiness.
+        metrics = self.page.wait_for_function("""selector=>{
+          const svg=document.querySelector(selector);
+          if(!svg?.isConnected)return false;
+          const bounds=svg.getBoundingClientRect();
+          if(!(bounds.width>0&&bounds.height>0))return false;
+          const m=svg.getScreenCTM();
+          if(!m||![m.a,m.b,m.c,m.d,m.e,m.f].every(Number.isFinite))return false;
+          const scale=Math.hypot(m.a,m.b),determinant=m.a*m.d-m.b*m.c;
+          if(!(scale>0)||!Number.isFinite(determinant)||determinant===0)return false;
+          return {a:m.a,b:m.b,c:m.c,d:m.d,e:m.e,f:m.f,scale};
+        }""", arg=self.svg)
+        try:
+            return metrics.json_value()
+        finally:
+            metrics.dispose()
 
     def screen(self, x, y, matrix=None):
         matrix = self.metric() if matrix is None else matrix
