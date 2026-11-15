@@ -130,6 +130,16 @@ class ImageEdit(Record):
         return self
 
 
+class PanelLabelAnchor(Record):
+    """Upright caption anchor in fractions of displayed image dimensions.
+
+    The physical 1.8 mm baseline offset remains unchanged by image resizing.
+    This is layout metadata; source crops and image pixels are unaffected.
+    """
+    x_ratio: FiniteFloat = Field(strict=True, ge=-400000, le=400000)
+    y_ratio: FiniteFloat = Field(strict=True, ge=-400000, le=400000)
+
+
 class Panel(ImageEdit):
     id: str = Field(min_length=1, max_length=100, pattern=r'^[A-Za-z0-9_-]+$')
     asset_id: str = Field(pattern=r'^[a-f0-9]{64}$')
@@ -142,6 +152,7 @@ class Panel(ImageEdit):
     # None means an older document: the editor preserves existing custom labels
     # before deciding which empty labels can become automatic.
     label_mode: Literal['auto', 'manual', 'none'] | None = None
+    label_anchor: PanelLabelAnchor | None = None
     label_font_size_pt: FiniteFloat = Field(default=10, gt=0, le=1000)
     title_font_size_pt: FiniteFloat = Field(default=8, gt=0, le=1000)
     group_id: str | None = Field(default=None, min_length=1, max_length=100,

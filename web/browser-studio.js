@@ -1,13 +1,14 @@
 import {applyPanelLayout as applySharedLayout, resizeFigure, layoutOptions, ensureCompositionSettings, reconcilePanelLabels} from './modules/layout-engine.js';
 import {JOURNAL_PRESETS, journalPresetById, journalPreflight} from './modules/journal-presets.js';
 import {LIMITS, encodeProject, decodeProject} from './browser/archive.js';
-import {newProject, panelForAsset, validateBrowserProject, uid, clone, recipeSnapshot, escapeXml as e, selectedObjects, expandedSelection, selectionUnits, selectionBounds, planUnitAlignment, planSelectionTransform, selectionGeometryChanged, assertUngroupedLayout, captureCommittedWorkspace, figureIssues, panelBounds} from './browser/model.js';
+import {newProject, panelForAsset, validateBrowserProject, uid, clone, recipeSnapshot, escapeXml as e, selectedObjects, expandedSelection, selectionUnits, selectionBounds, planUnitAlignment, planSelectionTransform, selectionGeometryChanged, assertUngroupedLayout, captureCommittedWorkspace, figureIssues} from './browser/model.js';
 import {createSource, releaseSources, sourceBudget} from './browser/sources.js';
 import {figureMarkup, exportSvg, exportPng, exportRasterPdf, prepareFonts, fontIssues} from './browser/render.js';
 import {getWorkspaceStatus, loadWorkspace, saveWorkspace, clearWorkspace} from './browser/persistence.js';
 import {numberField,readNumericInput,markLayoutNumberEdited} from './browser/forms.js';
 import {hasWorkspaceContent} from './browser/model.js';
 import {formatLayoutNumber} from './modules/numeric-input.js';
+import {snapTranslation,svgPixelsPerMm,snapGuideMarkup} from './modules/snap-guides.js';
 
 const $ = selector => document.querySelector(selector);
 if (!globalThis.crypto?.subtle || !globalThis.crypto?.randomUUID || typeof structuredClone !== 'function') {
@@ -73,6 +74,8 @@ function calculateFit() {
 function renderCanvas() {
   if (fitted) calculateFit(); const wrapper = $('#canvas-wrap'); wrapper.innerHTML = figureMarkup(project, sources, {editor: true, selection});
   const svg = $('#studio-svg'); svg.style.width = `${project.figure.width_mm * 96 / 25.4 * zoom}px`; svg.style.height = `${project.figure.height_mm * 96 / 25.4 * zoom}px`;
+  const guides=document.createElementNS('http://www.w3.org/2000/svg','g');guides.id='snap-guides';guides.setAttribute('pointer-events','none');
+  guides.innerHTML=snapGuideMarkup(gesture?.guides || [],project.figure);svg.append(guides);
   $('#empty-state').hidden = !!(project.panels.length || project.annotations.length); $('#zoom').value = String(Math.round(zoom * 100)); $('#zoom-value').textContent = `${Math.round(zoom * 100)}%`;
 }
 function renderAssets() {
@@ -430,13 +433,13 @@ $('#canvas-wrap').addEventListener('pointerdown', event => {
   finishParameterEdit({discardInvalid: true});
   if (!target && !resize) { selection.clear(); render(); return; }
   if (target && !resize) { const id = target.dataset.object; if (event.shiftKey) { selectObject(id, true); return; } if (!selection.has(id)) selectObject(id); }
-  event.preventDefault(); selected(); gesture = {before: snapshot(), ids: new Set(selection), pointerId: event.pointerId, start: canvasPoint(event), originals: selected().map(clone), bounds: selectionBounds(project, selection), resize: resize?.dataset.resize || null, moved: false, error: null};
+  event.preventDefault(); selected(); gesture = {before: snapshot(), ids: new Set(selection), pointerId: event.pointerId, start: canvasPoint(event), startClient:{x:event.clientX,y:event.clientY}, originals: selected().map(clone), bounds: selectionBounds(project, selection), resize: resize?.dataset.resize || null, moved: false, error: null,guides:[]};
 });
 function processGestureFrame() {
   const pointer = pendingPointer; pendingPointer = null; if (!gesture || !pointer) return;
   try {
     const point = canvasPoint(pointer), dx = point.x - gesture.start.x, dy = point.y - gesture.start.y;
-    if (!gesture.moved && dx * dx + dy * dy < .0025) return; gesture.moved = true;
+    if (!gesture.moved && Math.hypot(pointer.clientX-gesture.startClient.x,pointer.clientY-gesture.startClient.y)<3) return; gesture.moved = true;
     let placements;
     if (gesture.resize) {
       if (gesture.originals.length === 1) {
@@ -449,15 +452,9 @@ function processGestureFrame() {
         placements = planSelectionTransform(gesture.before, gesture.ids, {scale, pivot_x_mm: bounds.x, pivot_y_mm: bounds.y});
       }
     } else {
-      let moveX = dx, moveY = dy;
-      if ($('#snap-enabled').checked) {
-        const bounds = gesture.bounds, left = bounds.x, top = bounds.y, right = left + bounds.width, bottom = top + bounds.height;
-        const targetsX = [0, project.figure.width_mm / 2, project.figure.width_mm], targetsY = [0, project.figure.height_mm / 2, project.figure.height_mm];
-        for (const item of gesture.before.panels) if (!gesture.ids.has(item.id)) { const box = panelBounds(item); targetsX.push(box.x, box.x + box.width / 2, box.x + box.width); targetsY.push(box.y, box.y + box.height / 2, box.y + box.height); }
-        const adjustment = (moving, targets) => { let best = 1, result = 0; for (const position of moving) for (const target of targets) if (Math.abs(target - position) < best) { best = Math.abs(target - position); result = target - position; } return result; };
-        moveX += adjustment([left + dx, (left + right) / 2 + dx, right + dx], targetsX); moveY += adjustment([top + dy, (top + bottom) / 2 + dy, bottom + dy], targetsY);
-      }
-      placements = planSelectionTransform(gesture.before, gesture.ids, {dx_mm: moveX, dy_mm: moveY});
+      const snapped=snapTranslation(gesture.before,gesture.originals,dx,dy,{enabled:$('#snap-enabled').checked&&!pointer.altKey,pixelsPerMm:svgPixelsPerMm($('#studio-svg'))});
+      gesture.guides=snapped.guides;
+      placements = planSelectionTransform(gesture.before, gesture.ids, {dx_mm: snapped.dx_mm, dy_mm: snapped.dy_mm});
     }
     applyPlacements(placements); gesture.error = null; renderCanvas();
   } catch (error) { gesture.error = error.message; }
@@ -465,11 +462,11 @@ function processGestureFrame() {
 function stopGestureFrame() { if (gestureFrame) cancelAnimationFrame(gestureFrame); gestureFrame = 0; }
 function cancelGesture() { stopGestureFrame(); pendingPointer = null; if (gesture) { project = gesture.before; gesture = null; render(); } }
 window.addEventListener('pointermove', event => {
-  if (!gesture || busy || event.pointerId !== gesture.pointerId) return; pendingPointer = {clientX: event.clientX, clientY: event.clientY, shiftKey: event.shiftKey};
+  if (!gesture || busy || event.pointerId !== gesture.pointerId) return; pendingPointer = {clientX: event.clientX, clientY: event.clientY, shiftKey: event.shiftKey,altKey:event.altKey};
   if (!gestureFrame) gestureFrame = requestAnimationFrame(() => { gestureFrame = 0; processGestureFrame(); });
 });
 window.addEventListener('pointerup', event => {
-  if (!gesture || event.pointerId !== gesture.pointerId) return; stopGestureFrame(); pendingPointer = {clientX: event.clientX, clientY: event.clientY, shiftKey: event.shiftKey}; processGestureFrame();
+  if (!gesture || event.pointerId !== gesture.pointerId) return; stopGestureFrame(); pendingPointer = {clientX: event.clientX, clientY: event.clientY, shiftKey: event.shiftKey,altKey:event.altKey}; processGestureFrame();
   const before = gesture.before, ids = gesture.ids, errorMessage = gesture.error; gesture = null;
   try { if (errorMessage) throw new Error(errorMessage); if (selectionGeometryChanged(before, project, ids)) { reconcilePanelLabels(project); validateBrowserProject(project); remember(before); markChanged(); } else render(); } catch (error) { project = before; render(); message(error.message, 'error'); }
 });

@@ -5,6 +5,7 @@ import {estimateMarkerAt} from './gel.js';
 import {regionSvg} from './source-overlays.js';
 import {selectionBounds} from './composition.js';
 import {panelBounds} from './layout-engine.js';
+import {snapTranslation,svgPixelsPerMm,snapGuideMarkup} from './snap-guides.js';
 
 let gesture = null, animationFrame = null, pendingEvent = null;
 
@@ -87,21 +88,6 @@ function beginGesture(event) {
   try{svg.setPointerCapture(event.pointerId);}catch{}
 }
 
-function snappedPosition(item, x, y, origin, excluded=new Set([item.id])) {
-  const figure = state.project.figure, guides = [], tolerance = 1.1;
-  if (!state.snap) return {x,y,guides};
-  const targetsX = [0,figure.width_mm/2,figure.width_mm], targetsY = [0,figure.height_mm/2,figure.height_mm];
-  for (const panel of state.project.panels) if (!excluded.has(panel.id)) {
-    const bounds=panelBounds(panel);
-    targetsX.push(bounds.left,bounds.left+bounds.width_mm/2,bounds.right);
-    targetsY.push(bounds.top,bounds.top+bounds.height_mm/2,bounds.bottom);
-  }
-  let minX=tolerance,minY=tolerance;
-  for(const offset of [0,origin.width_mm/2,origin.width_mm]) for(const target of targetsX) if(Math.abs(x+offset-target)<minX) {minX=Math.abs(x+offset-target); guides[0]={axis:'x',position:target}; guides[2]=target-offset;}
-  for(const offset of [0,origin.height_mm/2,origin.height_mm]) for(const target of targetsY) if(Math.abs(y+offset-target)<minY) {minY=Math.abs(y+offset-target); guides[1]={axis:'y',position:target}; guides[3]=target-offset;}
-  return {x:guides[2] ?? x,y:guides[3] ?? y,guides:guides.slice(0,2).filter(Boolean)};
-}
-
 function updateGesture(event) {
   if (!gesture) return;
   if(gesture.kind==='pan'){state.sourcePan={x:gesture.originPan.x+event.clientX-gesture.startClient.x,y:gesture.originPan.y+event.clientY-gesture.startClient.y};document.querySelectorAll('[data-source-canvas]').forEach(svg=>{svg.style.transform=`translate(${state.sourcePan.x}px,${state.sourcePan.y}px) scale(${state.sourceZoom})`;});return;}
@@ -132,19 +118,19 @@ function updateGesture(event) {
       const scaleX=width/origin.width_mm,scaleY=height/origin.height_mm;
       const x=handle==='nw'?origin.x_mm+origin.width_mm-width:origin.x_mm,y=handle==='nw'?origin.y_mm+origin.height_mm-height:origin.y_mm;
       for(const entry of gesture.items) {
-        Object.assign(entry.item,{x_mm:round(x+(entry.origin.x_mm-origin.x_mm)*scaleX),y_mm:round(y+(entry.origin.y_mm-origin.y_mm)*scaleY),width_mm:round(entry.origin.width_mm*scaleX),height_mm:round(entry.origin.height_mm*scaleY)});
+        Object.assign(entry.item,{x_mm:round(x+(entry.origin.x_mm-origin.x_mm)*scaleX,6),y_mm:round(y+(entry.origin.y_mm-origin.y_mm)*scaleY,6),width_mm:round(entry.origin.width_mm*scaleX,6),height_mm:round(entry.origin.height_mm*scaleY,6)});
         entry.element?.setAttribute('transform',`translate(${entry.item.x_mm} ${entry.item.y_mm})`);
         if(entry.element)entry.element.innerHTML=panelContentMarkup(entry.item,assetFor(state.project,entry.item.asset_id),{selected:true,handles:gesture.items.length===1});
       }
       const bounds=selectionBounds(gesture.items.map(entry=>entry.item));updateSelectionOutline(bounds.left,bounds.top,bounds.width_mm,bounds.height_mm);
     } else {
-      const snapped=snappedPosition({},origin.x_mm+deltaX,origin.y_mm+deltaY,origin,gesture.ids),dx=snapped.x-origin.x_mm,dy=snapped.y-origin.y_mm;
-      for(const entry of gesture.items) {entry.item.x_mm=round(entry.origin.x_mm+dx);entry.item.y_mm=round(entry.origin.y_mm+dy);entry.element?.setAttribute('transform',`translate(${entry.item.x_mm} ${entry.item.y_mm})`);}
-      updateSelectionOutline(snapped.x,snapped.y,origin.width_mm,origin.height_mm);showGuides(snapped.guides);
+      const snapped=snapTranslation(state.project,gesture.items.map(entry=>entry.origin),deltaX,deltaY,{enabled:state.snap&&!event.altKey,pixelsPerMm:svgPixelsPerMm(gesture.svg)}),dx=snapped.dx_mm,dy=snapped.dy_mm;
+      for(const entry of gesture.items) {entry.item.x_mm=round(entry.origin.x_mm+dx,6);entry.item.y_mm=round(entry.origin.y_mm+dy,6);entry.element?.setAttribute('transform',`translate(${entry.item.x_mm} ${entry.item.y_mm})`);}
+      updateSelectionOutline(origin.x_mm+dx,origin.y_mm+dy,origin.width_mm,origin.height_mm);showGuides(snapped.guides);
     }
   } else {
-    const snapped=snappedPosition(item,origin.x_mm+deltaX,origin.y_mm+deltaY,origin);
-    item.x_mm=round(snapped.x);item.y_mm=round(snapped.y);element.setAttribute('transform',`translate(${item.x_mm} ${item.y_mm})`);showGuides(snapped.guides);
+    const snapped=snapTranslation(state.project,[origin],deltaX,deltaY,{enabled:state.snap&&!event.altKey,pixelsPerMm:svgPixelsPerMm(gesture.svg)});
+    item.x_mm=round(origin.x_mm+snapped.dx_mm,6);item.y_mm=round(origin.y_mm+snapped.dy_mm,6);element.setAttribute('transform',`translate(${item.x_mm} ${item.y_mm})`);showGuides(snapped.guides);
   }
 }
 
@@ -155,7 +141,8 @@ function updateSelectionOutline(x,y,width,height) {
   box?.setAttribute('width',width);box?.setAttribute('height',height);handle?.setAttribute('x',width-1.2);handle?.setAttribute('y',height-1.2);
 }
 function showGuides(guides) {
-  gesture.svg.querySelector('#snap-guides').innerHTML=guides.map(guide=>guide.axis==='x'?`<line x1="${guide.position}" x2="${guide.position}" y1="0" y2="${state.project.figure.height_mm}" stroke="#7ca998" stroke-width=".2" stroke-dasharray="1 1"/>`:`<line x1="0" x2="${state.project.figure.width_mm}" y1="${guide.position}" y2="${guide.position}" stroke="#7ca998" stroke-width=".2" stroke-dasharray="1 1"/>`).join('');
+  const overlay=gesture.svg.querySelector('#snap-guides');
+  if(overlay)overlay.innerHTML=snapGuideMarkup(guides,state.project.figure);
 }
 
 function moveGesture(event) {

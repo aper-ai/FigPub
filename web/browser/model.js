@@ -11,7 +11,7 @@ export function captureCommittedWorkspace(project, sources) { return {project: r
 export function hasWorkspaceContent(project) {
   return ['assets', 'panels', 'annotations', 'measurements'].some(key => project[key]?.length > 0) || project.revision > 0;
 }
-export const round = value => Math.round(value * 1000) / 1000;
+export const round = value => Math.round(value * 1e6) / 1e6;
 export const escapeXml = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'}[character]));
 export function newProject() {
   const time = new Date().toISOString();
@@ -45,6 +45,7 @@ export function validateBrowserProject(project) {
     if (panel.channel_view || panel.series > 0 || panel.frame > 0 || panel.page > 0 || panel.channel > 0 || panel.display?.invert || panel.display?.low != null || panel.display?.high != null || (panel.display?.gamma ?? 1) !== 1 || panel.gel?.lane_centers?.length || panel.gel?.marker_points?.length || panel.gel?.hidden_lanes?.length) throw new Error('此项目包含通道、强度变换或凝胶专用标注。为完整保留呈现，请在本机工作台中继续编辑。');
     for (const key of ['label', 'title']) if (typeof panel[key] !== 'string' || panel[key].length > 240) throw new Error('面板编号或标题过长');
     if (!finite(panel.label_font_size_pt ?? 10, 1, 100) || !finite(panel.title_font_size_pt ?? 8, 1, 100)) throw new Error('编号和标题字号须为 1–100 pt');
+    if (panel.label_anchor!=null && (typeof panel.label_anchor!=='object' || Array.isArray(panel.label_anchor) || !finite(panel.label_anchor.x_ratio,-400000,400000) || !finite(panel.label_anchor.y_ratio,-400000,400000))) throw new Error('面板编号锚点无效');
     if (panel.group_id != null && !/^[A-Za-z0-9_-]{1,100}$/.test(panel.group_id)) throw new Error('图片编组身份无效');
     if (panel.scale_bar && (!finite(panel.scale_bar.um_per_px, 1e-9, 1e9) || !finite(panel.scale_bar.length_um, 1e-9, 1e9) || !/^#[a-f0-9]{6}$/i.test(panel.scale_bar.color))) throw new Error('比例尺校准无效');
     if (panel.scale_bar && panel.scale_bar.length_um / panel.scale_bar.um_per_px > panel.crop.width * .9) throw new Error('比例尺长度超过面板宽度的 90%，请在本机版调整校准或长度');

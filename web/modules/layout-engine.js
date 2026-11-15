@@ -13,6 +13,7 @@ const MAX_ITEMS = 1000;
 const DEFAULT_LAYOUT = Object.freeze({preset:'grid',columns:0,rows:0,margin_mm:6,gap_x_mm:3,gap_y_mm:3});
 const DEFAULT_NUMBERING = Object.freeze({style:'upper',order:'visual',enabled:true});
 const LABEL_MODES = new Set(['auto','manual','none']);
+const MAX_LABEL_ANCHOR_RATIO = 400000;
 const roundMm = value => Math.round(value * 1e6) / 1e6;
 const normalLabel = value => String(value ?? '').trim().toLocaleLowerCase('en');
 
@@ -54,6 +55,7 @@ function checkedPanels(project) {
   for(const panel of panels) {
     if(!panel||typeof panel.id!=='string'||!panel.id||ids.has(panel.id))throw new Error('面板 ID 缺失或重复，请先修复项目');
     if(panel.label_mode!=null&&!LABEL_MODES.has(panel.label_mode))throw new Error('面板编号模式无效');
+    labelAnchor(panel);
     ids.add(panel.id);
   }
   return panels;
@@ -62,6 +64,28 @@ function checkedPanels(project) {
 function inferredMode(panel) {
   // Old files do not record whether a label was typed by the user. Preserve it.
   return panel.label_mode || (String(panel.label ?? '').trim()?'manual':'auto');
+}
+
+function labelAnchor(panel) {
+  if(panel.label_anchor==null)return {x_ratio:0,y_ratio:0};
+  const anchor=panel.label_anchor;
+  if(typeof anchor!=='object'||Array.isArray(anchor))throw new Error('面板编号锚点无效');
+  return {
+    x_ratio:finite(anchor.x_ratio,'编号水平锚点',{minimum:-MAX_LABEL_ANCHOR_RATIO,maximum:MAX_LABEL_ANCHOR_RATIO}),
+    y_ratio:finite(anchor.y_ratio,'编号垂直锚点',{minimum:-MAX_LABEL_ANCHOR_RATIO,maximum:MAX_LABEL_ANCHOR_RATIO}),
+  };
+}
+
+/** Captions stay upright and follow panel translation/resizing without changing type size.
+ * The optional anchor is a fraction of the image dimensions, not source pixels.
+ * Old documents keep their original image-left / image-top-minus-1.8-mm position.
+ */
+export function panelLabelPosition(panel,{relative=false}={}) {
+  const anchor=labelAnchor(panel);
+  return {
+    x_mm:(relative?0:panel.x_mm)+panel.width_mm*anchor.x_ratio,
+    y_mm:(relative?0:panel.y_mm)+panel.height_mm*anchor.y_ratio-1.8,
+  };
 }
 
 /** Zero-based spreadsheet-style letters: 0=A, 25=Z, 26=AA. */
@@ -85,7 +109,10 @@ export function ensureCompositionSettings(project) {
 
 /** Reading rows use vertical overlap, so different-height panels can share a row. */
 export function readingOrderPanels(panels) {
-  const records=panels.map((panel,index)=>({panel,index,x:Number.isFinite(panel.x_mm)?panel.x_mm:0,y:Number.isFinite(panel.y_mm)?panel.y_mm:0,height:Number.isFinite(panel.height_mm)?Math.max(0,panel.height_mm):0}));
+  const records=panels.map((panel,index)=>{
+    const anchor=panel.label_anchor?panelLabelPosition(panel):null;
+    return {panel,index,x:anchor?.x_mm ?? (Number.isFinite(panel.x_mm)?panel.x_mm:0),y:anchor?.y_mm ?? (Number.isFinite(panel.y_mm)?panel.y_mm:0),height:Number.isFinite(panel.height_mm)?Math.max(0,panel.height_mm):0};
+  });
   records.sort((a,b)=>a.y-b.y||a.x-b.x||a.index-b.index);
   const rows=[];
   for(const record of records) {
@@ -159,8 +186,9 @@ function envelope(panel, baseWidth, baseHeight, labelOverride) {
   const label=inferredMode(panel)==='none'?'':labelOverride ?? panel.label ?? (panel.label_mode==='auto'?'A':'');
   if(label) {
     const text=textFootprint(label,fontSize(panel.label_font_size_pt,10));
-    left.push([-baseWidth/2,0]);right.push([-baseWidth/2,text.width]);
-    top.push([-baseHeight/2,-1.8+text.top]);bottom.push([-baseHeight/2,-1.8+text.bottom]);
+    const anchor=labelAnchor(panel),labelX=baseWidth*(anchor.x_ratio-.5),labelY=baseHeight*(anchor.y_ratio-.5);
+    left.push([labelX,0]);right.push([labelX,text.width]);
+    top.push([labelY,-1.8+text.top]);bottom.push([labelY,-1.8+text.bottom]);
   }
   if(panel.title) {
     const text=textFootprint(panel.title,fontSize(panel.title_font_size_pt,8));
@@ -230,10 +258,16 @@ function sourceRatio(panel,assets) {
 
 function fitInCell(descriptor,cell) {
   if(cell.width_mm<MIN_EXTENT_MM||cell.height_mm<MIN_EXTENT_MM)return null;
+  // Reserve one shared caption band above every cell. The image may be narrow,
+  // short or rotated; its centering must never change the grid's label anchors.
+  const band=descriptor.labelBand;
+  if(descriptor.labelText&&descriptor.labelText.width>cell.width_mm+EPSILON)return null;
+  const body={...cell,y_mm:cell.y_mm+band.height,height_mm:cell.height_mm-band.height};
+  if(body.height_mm<MIN_EXTENT_MM)return null;
   const shape=descriptor.envelope,zero=evaluatedBounds(shape,0);
-  if(zero.width_mm>cell.width_mm+EPSILON||zero.height_mm>cell.height_mm+EPSILON)return null;
+  if(zero.width_mm>body.width_mm+EPSILON||zero.height_mm>body.height_mm+EPSILON)return null;
   let scale=Infinity;
-  for(const [high,low,extent] of [[shape.right,shape.left,cell.width_mm],[shape.bottom,shape.top,cell.height_mm]]) {
+  for(const [high,low,extent] of [[shape.right,shape.left,body.width_mm],[shape.bottom,shape.top,body.height_mm]]) {
     for(const [a,b] of high)for(const [c,d] of low) {
       if(a-c>EPSILON)scale=Math.min(scale,(extent-(b-d))/(a-c));
     }
@@ -241,8 +275,10 @@ function fitInCell(descriptor,cell) {
   const width=descriptor.ratio*scale,height=scale;
   if(!Number.isFinite(scale)||width<MIN_EXTENT_MM||height<MIN_EXTENT_MM)return null;
   const bounds=evaluatedBounds(shape,scale);
-  const centerX=cell.x_mm+(cell.width_mm-bounds.width_mm)/2-bounds.left,centerY=cell.y_mm+(cell.height_mm-bounds.height_mm)/2-bounds.top;
-  return {id:descriptor.panel.id,x_mm:roundMm(centerX-width/2),y_mm:roundMm(centerY-height/2),width_mm:roundMm(width),height_mm:roundMm(height)};
+  const centerX=body.x_mm+(body.width_mm-bounds.width_mm)/2-bounds.left,centerY=body.y_mm+(body.height_mm-bounds.height_mm)/2-bounds.top;
+  const placement={id:descriptor.panel.id,x_mm:roundMm(centerX-width/2),y_mm:roundMm(centerY-height/2),width_mm:roundMm(width),height_mm:roundMm(height)};
+  placement.label_anchor={x_ratio:(roundMm(cell.x_mm)-placement.x_mm)/placement.width_mm,y_ratio:(roundMm(cell.y_mm+band.baseline)+1.8-placement.y_mm)/placement.height_mm};
+  return placement;
 }
 
 function gridCandidate(descriptors,region,columns,rows,options) {
@@ -283,8 +319,12 @@ export function planPanelLayout(project,overrides={}) {
   const autoLength=Math.max(1,...draft.panels.filter(panel=>panel.label_mode==='auto').map(panel=>Array.from(panel.label).length));
   const descriptors=draft.panels.map(panel=>{
     const ratio=sourceRatio(panel,assets),label=panel.label_mode==='auto'&&draft.settings.composition.numbering.enabled?'A'.repeat(autoLength):panel.label;
-    return {panel,ratio,envelope:envelope(panel,ratio,1,label)};
+    const labelText=label&&panel.label_mode!=='none'?textFootprint(label,fontSize(panel.label_font_size_pt,10)):null;
+    return {panel,ratio,labelText,envelope:envelope({...panel,label_mode:'none'},ratio,1)};
   });
+  const labelTexts=descriptors.map(item=>item.labelText).filter(Boolean),baseline=Math.max(0,...labelTexts.map(text=>-text.top));
+  const labelBand={baseline,height:labelTexts.length?baseline+Math.max(...labelTexts.map(text=>text.bottom))+1.8:0};
+  descriptors.forEach(descriptor=>{descriptor.labelBand=labelBand;});
   let result,warnings=[];
   if(options.preset==='grid'||descriptors.length===1)result=bestGrid(descriptors,region,options);
   else {
@@ -370,7 +410,7 @@ export function resizeFigure(project,widthMm,heightMm,{mode='fit'}={}) {
   draft.figure=figure;reconcilePanelLabels(draft);
   if(!within(compositionBounds(draft),figure))throw new Error('适配后的图像或标注超出画布，请检查字号与位置');
   project.figure={...figure};
-  draft.panels.forEach((panel,index)=>Object.assign(project.panels[index],{x_mm:roundMm(panel.x_mm),y_mm:roundMm(panel.y_mm),width_mm:roundMm(panel.width_mm),height_mm:roundMm(panel.height_mm),label:panel.label,label_mode:panel.label_mode}));
+  draft.panels.forEach((panel,index)=>Object.assign(project.panels[index],{x_mm:roundMm(panel.x_mm),y_mm:roundMm(panel.y_mm),width_mm:roundMm(panel.width_mm),height_mm:roundMm(panel.height_mm),label:panel.label,label_mode:panel.label_mode,...(panel.label_anchor?{label_anchor:{...panel.label_anchor}}:{})}));
   (project.annotations || []).forEach((annotation,index)=>{const next=draft.annotations[index];Object.assign(annotation,{x_mm:roundMm(next.x_mm),y_mm:roundMm(next.y_mm),width_mm:roundMm(next.width_mm),height_mm:roundMm(next.height_mm)});});
   project.settings ||= {};project.settings.composition={...draft.settings.composition};
   return {mode,width_mm:width,height_mm:height,scale,warnings};

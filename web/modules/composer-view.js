@@ -1,6 +1,6 @@
 import {state,selectedPanels} from './state.js';
 import {selectionBounds} from './composition.js';
-import {annotationBounds,textLines as splitTextLines} from './layout-engine.js';
+import {annotationBounds,panelLabelPosition,textLines as splitTextLines} from './layout-engine.js';
 import {escapeHtml as e, assetFor, fullCrop, previewUrl, retainedSegments, sourceXInPanel, figureFont, scaleBarGeometry} from './domain.js';
 import {icon} from './icons.js';
 import {channelLayout} from './channel-domain.js';
@@ -73,8 +73,9 @@ function annotationMarkup(annotation) {
 }
 
 export function panelContentMarkup(panel,asset,{selected=false,handles=false}={}) {
+  const labelPosition=panelLabelPosition(panel,{relative:true});
   return `        ${panelImageMarkup(panel, asset)}
-        ${panel.label ? `<text class="panel-label" x="0" y="-1.8" font-size="${(panel.label_font_size_pt || 10)*.352778}" font-weight="700" fill="#1d2522" font-family="${figureFont(panel.label)}">${textLines(panel.label,0,(panel.label_font_size_pt || 10)*.352778)}</text>` : ''}
+        ${panel.label && panel.label_mode!=='none' ? `<text class="panel-label" x="${labelPosition.x_mm}" y="${labelPosition.y_mm}" font-size="${(panel.label_font_size_pt || 10)*.352778}" font-weight="700" fill="#1d2522" font-family="${figureFont(panel.label)}">${textLines(panel.label,labelPosition.x_mm,(panel.label_font_size_pt || 10)*.352778)}</text>` : ''}
         ${panel.title ? `<text x="${panel.width_mm/2}" y="-1.8" text-anchor="middle" font-size="${(panel.title_font_size_pt || 8)*.352778}" fill="#222222" font-family="${figureFont(panel.title)}">${textLines(panel.title,panel.width_mm/2,(panel.title_font_size_pt || 8)*.352778)}</text>` : ''}
         <rect class="panel-hit" width="${panel.width_mm}" height="${panel.height_mm}" fill="transparent" stroke="${selected ? '#078779' : 'transparent'}" stroke-width="${selected ? '.35' : '0'}"/>
         ${selected && handles ? `<rect data-handle="se" x="${panel.width_mm - 1}" y="${panel.height_mm - 1}" width="2" height="2" fill="white" stroke="#078779" stroke-width=".3"/><rect data-handle="nw" x="-1" y="-1" width="2" height="2" fill="white" stroke="#078779" stroke-width=".3"/>` : ''}
@@ -86,7 +87,7 @@ export function renderComposer() {
   const pixelsPerMm = composerPixelsPerMm();
   const svgWidth = figure.width_mm * pixelsPerMm, svgHeight = figure.height_mm * pixelsPerMm;
   return `<section class="composer-workspace">
-    <div class="stage-toolbar"><div class="stage-title">${icon('layers')}<strong>Figure 画布</strong><span class="soft-tag">${formatLayoutNumber(figure.width_mm)} × ${formatLayoutNumber(figure.height_mm)} mm</span></div><div class="toolbar-actions"><button class="icon-button ${state.snap ? 'active' : ''}" data-action="toggle-snap" title="对齐吸附">${icon('grid')}</button><span class="toolbar-divider"></span><button class="icon-button" data-action="zoom-out" title="缩小">${icon('minus')}</button><span class="zoom-value">${Math.round(state.figureZoom * 100)}%</span><button class="icon-button" data-action="zoom-in" title="放大">${icon('plus')}</button><button class="icon-button" data-action="zoom-fit" title="适合窗口">${icon('fit')}</button></div></div>
+    <div class="stage-toolbar"><div class="stage-title">${icon('layers')}<strong>Figure 画布</strong><span class="soft-tag">${formatLayoutNumber(figure.width_mm)} × ${formatLayoutNumber(figure.height_mm)} mm</span></div><div class="toolbar-actions"><button class="button small ${state.snap ? 'active' : ''}" data-action="toggle-snap" aria-pressed="${!!state.snap}" title="拖动时吸附到面板边缘、中心和编号基线；按住 Alt 暂停吸附">${icon('grid')}${state.snap?'对齐吸附':'吸附已关闭'}</button><span class="toolbar-divider"></span><button class="icon-button" data-action="zoom-out" title="缩小">${icon('minus')}</button><span class="zoom-value">${Math.round(state.figureZoom * 100)}%</span><button class="icon-button" data-action="zoom-in" title="放大">${icon('plus')}</button><button class="icon-button" data-action="zoom-fit" title="适合窗口">${icon('fit')}</button></div></div>
     <div class="composition-toolbar"><div class="segmented subtle"><button class="${state.figureTool === 'select' ? 'selected' : ''}" data-action="figure-tool" data-tool="select">${icon('cursor')}选择</button><button data-action="add-annotation" data-type="text">${icon('text')}文字</button><button data-action="add-annotation" data-type="rect">${icon('rect')}区域框</button><button data-action="add-annotation" data-type="line">${icon('line')}线条</button></div><div class="composition-import-actions"><button class="button small" data-action="import">${icon('upload')}批量导入</button><button class="button small" data-action="compose-all-assets" title="将素材库中尚未加入的图像加入并排列">加入已有素材</button><button class="button small" data-action="auto-layout">${icon('grid')}自动排版</button></div></div>
     <div class="artboard-viewport" data-drop-zone="canvas"><div class="artboard-frame"><div class="canvas-ruler-label">${formatLayoutNumber(figure.width_mm)} mm</div><svg id="figure-svg" class="figure-svg" data-preview-scale="${pixelsPerMm}" font-family="DejaVu Sans" width="${svgWidth}" height="${svgHeight}" viewBox="0 0 ${figure.width_mm} ${figure.height_mm}" style="background:${e(figure.background || '#ffffff')}" aria-label="科研图稿画布">
       <rect data-canvas-background="true" width="${figure.width_mm}" height="${figure.height_mm}" fill="${e(figure.background || '#ffffff')}"/>

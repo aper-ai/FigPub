@@ -120,6 +120,8 @@ for(const compositionKey of [{isComposing:true},{keyCode:229}])test(`desktop IME
 
 for(const mode of ['click','drag','cancel'])test(`a pending inspector edit stays with its original panel before a canvas ${mode}`,async t=>{
   const {window,app,errors,until,pointer}=await fixture(t);
+  // Isolate inspector ownership from zoom-dependent snapping, tested separately.
+  app.state.snap=false;
   app.state.project.panels.push({...structuredClone(app.state.project.panels[0]),id:'second',x_mm:60,label:'B'});
   app.emit();
   const input=window.document.getElementById('panel-x_mm');

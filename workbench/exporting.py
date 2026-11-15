@@ -74,6 +74,8 @@ def _map_source_x(panel, source_x, source_width, source_height):
 
 
 def build_scene(project: dict, resolver: Callable[[str], Path]) -> Scene:
+    from .figure_geometry import panel_label_position
+
     figure = project.get("figure", {})
     scene = Scene(float(figure.get("width_mm", 180)), float(figure.get("height_mm", 120)),
                   figure.get("background", "#ffffff"), title=str(project.get("title") or "Figure"))
@@ -199,7 +201,8 @@ def build_scene(project: dict, resolver: Callable[[str], Path]) -> Scene:
                                              "color": "#6b7280", "line_width_pt": .45, "dashed": True})
         label = '' if panel.get('label_mode') == 'none' else str(panel.get("label") or "")
         if label:
-            scene.primitives.append({"type": "text", "x": x, "y": y - 1.8, "text": label,
+            label_x, label_baseline = panel_label_position(panel)
+            scene.primitives.append({"type": "text", "x": label_x, "y": label_baseline, "text": label,
                                      "font_size_pt": float(panel.get("label_font_size_pt", 10)), "bold": True, "color": "#202725", "upright": True})
         title = str(panel.get("title") or "")
         if title:

@@ -18,7 +18,7 @@ jobs:
   publish:
     if: ${{ github.event.ref_type == 'branch' && github.ref == 'refs/heads/release/validated-0.6.2' }}
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
     env:
       PYTHONUTF8: '1'
     steps:
@@ -105,6 +105,42 @@ jobs:
           python scripts/prepare_verified_release.py prepare --metadata .ci-release/github-provenance.json --evidence-archive .ci-release/acceptance-evidence.zip --candidate-archive .ci-release/verified-candidate.zip --output .ci-release/prepared --repository "$env:GITHUB_REPOSITORY" --expected-commit "$env:GITHUB_SHA" --expected-run-id "$env:ACCEPTANCE_RUN_ID"
           if ($LASTEXITCODE -ne 0) { throw 'Release preparation rejected the candidate.' }
 
+      - name: Install locked packaging and desktop dependencies
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements.txt -r requirements-desktop.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Installer verification dependency installation failed.' }
+
+      - name: Extract only the fully accepted Windows toolkit
+        shell: pwsh
+        run: |
+          python packaging/build_windows_full.py extract --archive .ci-release/prepared/candidates/Figure_Workbench_0.6.2_Windows_Full.zip --build-record .ci-release/prepared/evidence/windows-build.json --destination .ci-release/installer-payload --receipt .ci-release/installer-extraction.json
+          if ($LASTEXITCODE -ne 0) { throw 'Verified full toolkit extraction failed.' }
+
+      - name: Fetch and authenticate the official WebView2 bootstrapper
+        shell: pwsh
+        run: |
+          python packaging/fetch_webview2_bootstrapper.py --output .ci-release/webview/MicrosoftEdgeWebview2Setup.exe --record .ci-release/webview/bootstrapper.json
+          if ($LASTEXITCODE -ne 0) { throw 'Microsoft WebView2 bootstrapper verification failed.' }
+
+      - name: Package the complete accepted payload into one installer
+        shell: pwsh
+        run: |
+          python packaging/build_windows_installer.py --toolkit .ci-release/installer-payload/Figure_Workbench_0.6.2_Windows_x64 --webview-bootstrapper .ci-release/webview/MicrosoftEdgeWebview2Setup.exe --webview-record .ci-release/webview/bootstrapper.json --output .ci-release/installer/Figure_Workbench_0.6.2_Setup.exe --record .ci-release/installer-build.json --expected-commit "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer build failed.' }
+
+      - name: Verify actual installation, reinstall, project retention and uninstall
+        shell: pwsh
+        run: |
+          python scripts/check_windows_installer.py --installer .ci-release/installer/Figure_Workbench_0.6.2_Setup.exe --build-record .ci-release/installer-build.json --output .ci-release/installer-smoke.json
+          if ($LASTEXITCODE -ne 0) { throw 'Windows installer lifecycle verification failed.' }
+
+      - name: Prepare the single public installer with the unchanged formal release gate
+        shell: pwsh
+        run: |
+          python scripts/prepare_installer_release.py prepare --installer .ci-release/installer/Figure_Workbench_0.6.2_Setup.exe --build-record .ci-release/installer-build.json --smoke-record .ci-release/installer-smoke.json --output .ci-release/installer-prepared --repository "$env:GITHUB_REPOSITORY" --expected-commit "$env:GITHUB_SHA" --tag v0.6.2 --verified-release-directory .ci-release/prepared
+          if ($LASTEXITCODE -ne 0) { throw 'Single-installer release preparation rejected the candidate.' }
+
       - name: Refuse any existing tag or release
         uses: actions/github-script@v7
         with:
@@ -117,14 +153,14 @@ jobs:
             catch (error) { if (error.status !== 404) throw error; }
             if (existing) throw new Error('The v0.6.2 tag already exists. It will never be overwritten.');
 
-      - name: Create an unpublished draft with only verified attachments
+      - name: Create an unpublished draft with only the verified Setup.exe
         env:
           GH_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
-          $manifest = Get-Content -Raw -Encoding UTF8 .ci-release/prepared/upload-manifest.json | ConvertFrom-Json
-          $assets = @($manifest.assets | ForEach-Object { Join-Path .ci-release/prepared $_.path })
-          gh release create v0.6.2 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --draft --title "Figure Workbench 0.6.2 · Windows 完整工具包" --notes-file .ci-release/prepared/RELEASE_NOTES.md @assets
+          $manifest = Get-Content -Raw -Encoding UTF8 .ci-release/installer-prepared/upload-manifest.json | ConvertFrom-Json
+          $assets = @($manifest.assets | ForEach-Object { Join-Path .ci-release/installer-prepared $_.path })
+          gh release create v0.6.2 --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --draft --title "Figure Workbench 0.6.2 · Windows 安装版" --notes-file .ci-release/installer-prepared/RELEASE_NOTES.md @assets
           if ($LASTEXITCODE -ne 0) { throw 'Draft creation/upload failed; no existing release will be replaced.' }
 
       - name: Fetch uploaded attachment digests and the draft tag state
@@ -138,7 +174,7 @@ jobs:
             let release;
             for (let attempt = 0; attempt < 6; attempt++) {
               ({data: release} = await github.rest.repos.getRelease({...context.repo, release_id: drafts[0].id}));
-              if (release.assets?.length === 6 && release.assets.every(asset =>
+              if (release.assets?.length === 1 && release.assets.every(asset =>
                   asset.state === 'uploaded' && /^sha256:[a-f0-9]{64}$/.test(asset.digest || ''))) break;
               if (attempt < 5) await new Promise(resolve => setTimeout(resolve, 5000));
             }
@@ -154,7 +190,7 @@ jobs:
       - name: Require exact remote names, sizes, digests and target commit
         shell: pwsh
         run: |
-          python scripts/prepare_verified_release.py verify-upload --prepared .ci-release/prepared --release-json .ci-release/remote-release.json --tag-json .ci-release/remote-tag.json --repository "$env:GITHUB_REPOSITORY" --expected-commit "$env:GITHUB_SHA"
+          python scripts/prepare_installer_release.py verify-upload --prepared .ci-release/installer-prepared --release-json .ci-release/remote-release.json --tag-json .ci-release/remote-tag.json --repository "$env:GITHUB_REPOSITORY" --expected-commit "$env:GITHUB_SHA"
           if ($LASTEXITCODE -ne 0) { throw 'Uploaded attachment verification failed; release remains a draft.' }
 
       - name: Publish the verified draft as latest
@@ -173,12 +209,18 @@ jobs:
             const fs = require('node:fs/promises');
             const {data: release} = await github.rest.repos.getReleaseByTag({...context.repo, tag: 'v0.6.2'});
             const {data: tag} = await github.rest.git.getRef({...context.repo, ref: 'tags/v0.6.2'});
-            if (release.draft || release.target_commitish !== context.sha ||
+            const manifest = JSON.parse(await fs.readFile('.ci-release/installer-prepared/upload-manifest.json', 'utf8'));
+            const expected = manifest.assets[0];
+            if (release.draft || release.prerelease || release.target_commitish !== context.sha ||
                 tag.object?.type !== 'commit' || tag.object?.sha !== context.sha)
               throw new Error('Published release target does not match the verified commit.');
+            if (release.assets?.length !== 1 || release.assets[0].name !== expected.file ||
+                release.assets[0].state !== 'uploaded' || release.assets[0].size !== expected.bytes ||
+                release.assets[0].digest !== `sha256:${expected.sha256}`)
+              throw new Error('Published release does not contain exactly the verified Setup.exe.');
             await fs.writeFile('.ci-release/published-release.json', JSON.stringify({release, tag}, null, 2) + '\n', 'utf8');
 
-      - name: Retain publication receipts for investigation
+      - name: Retain all original packages, acceptance evidence and installer receipts internally
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -188,11 +230,14 @@ jobs:
             .ci-release/remote-release.json
             .ci-release/remote-tag.json
             .ci-release/published-release.json
-            .ci-release/prepared/upload-manifest.json
-            .ci-release/prepared/upload-verification.json
-            .ci-release/prepared/RELEASE_ACCEPTANCE.json
-            .ci-release/prepared/SHA256SUMS
-            .ci-release/prepared/RELEASE_NOTES.md
+            .ci-release/prepared/
+            .ci-release/installer-prepared/
+            .ci-release/installer-extraction.json
+            .ci-release/installer-build.json
+            .ci-release/installer-build.compiler.log
+            .ci-release/installer-smoke.json
+            .ci-release/installer-smoke.*.log
+            .ci-release/webview/bootstrapper.json
           if-no-files-found: warn
           include-hidden-files: true
           retention-days: 90
