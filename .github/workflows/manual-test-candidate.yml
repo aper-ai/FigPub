@@ -4,7 +4,7 @@ name: Build Windows candidate for manual testing
 # It does not run or replace the validated-release acceptance workflow.
 on:
   push:
-    branches: [main]
+    branches: [candidate/0.6.2-rc1]
     paths: [.github/workflows/manual-test-candidate.yml]
   workflow_dispatch:
 
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build:
-    if: ${{ github.ref == 'refs/heads/main' }}
+    if: ${{ github.ref == 'refs/heads/candidate/0.6.2-rc1' }}
     runs-on: windows-latest
     timeout-minutes: 60
     defaults:
