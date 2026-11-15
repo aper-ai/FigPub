@@ -14,7 +14,7 @@ Figure Workbench 面向生命科学研究，将 Western blot 定量、qPCR 分�
 
 期刊预设、图稿布局和对象属性在参数修改后自动生效，去除重复确认按钮；浏览器组图支持连续输入合并撤销、无效草稿校验，以及保存/导出前提交有效修改。
 
-自动网格为编号保留统一位置：同列左对齐、同行基线一致；图片继续等比居中并保留完整内容。拖动时显示清晰的动态参考线，可吸附到图片边缘、中心、画布边距和其他编号；吸附距离随画布缩放保持一致，按住 Alt 可临时自由拖动。旧工程保留原位置，点击“自动排列”或选择网格后应用新的编号对齐。
+自动网格为编号保留统一位置：同列左对齐、同行基线一致；图片继续等比居中并保留完整内容。拖动时显示清晰的动态参考线，可吸附到图片边缘、中心、画布边距和其他编号；吸附距离随画布缩放保持一致，按住 Alt 可临时自由拖动。旧工程保留原位置，点击“自动排版”（独立浏览器版为“自动排列”）或选择网格后应用新的编号对齐。改动与验证记录见[候选改动 PR #1](https://github.com/aper-ai/figure-workbench/pull/1)。
 
 Windows 下载区提供一个安装 EXE，包含客户端、科学计算环境及两种 Cellpose 模型。源码、浏览器构建和测试证据通过仓库与 Actions 留存。0.6.2 仍为供手动验证的候选版，未完成的原生完整验收及模型推理检查会在发行说明中明确列出。
 
@@ -82,7 +82,7 @@ Cellpose 使用完整包中的 CPU 环境和预训练权重执行细胞或细胞
 
 程序与工作区分开保存。工作区位于 `%LOCALAPPDATA%\FigureWorkbench`；升级和卸载不会主动清除其中的项目与原图副本。跨电脑转移及长期归档请使用包含原始文件的 `.figwork` 工程。
 
-**已验证旧版：**[0.6.1 Windows 完整 ZIP](https://github.com/aper-ai/figure-workbench/releases/download/v0.6.1/Figure_Workbench_0.6.1_Windows_Full.zip) 仍可下载。解压后运行 `FigureWorkbench.exe`，保留同级 `runtime/`、`app/`、`cellpose/` 目录。旧版不包含本次编号与参考线修复。
+**已验证旧版：**[0.6.1 Windows 完整 ZIP](https://github.com/aper-ai/figure-workbench/releases/download/v0.6.1/Figure_Workbench_0.6.1_Windows_Full.zip) 仍可下载。解压后运行 `FigureWorkbench.exe`，保留同级 `runtime/`、`app/`、`cellpose/` 目录。旧版不包含本次编号与参考线修复。其源码与验收附件仍可通过[原始 0.6.1 发行记录](https://github.com/tuantuan007/figure-workbench/releases/tag/v0.6.1)核对。
 
 ### 下载区与开发资料
 
@@ -128,7 +128,7 @@ PNG/TIFF 图稿输出为显示用 RGB 成图，原始实验数据保存在来源
 | 原生 Windows 客户端 | 15 个场景通过 |
 | 完整包内模型推理 | `nuclei`、`cyto3` 均通过 |
 
-验收包括最终 ZIP 解压、中文与空格路径、系统文件对话框、输入输出校验、保存失败恢复、工程重开、窗口退出及后台清理。历史报告、日志、截图及文件 SHA-256 可通过[原始 Windows 验收运行](https://github.com/tuantuan007/figure-workbench/actions/runs/43452637043)核对；当前构建的内部证据保留在[本仓库 Actions](https://github.com/aper-ai/figure-workbench/actions)。
+验收包括最终 ZIP 解压、中文与空格路径、系统文件对话框、输入输出校验、保存失败恢复、工程重开、窗口退出及后台清理。历史报告、日志、截图及文件 SHA-256 可通过[原始 0.6.1 发行记录](https://github.com/tuantuan007/figure-workbench/releases/tag/v0.6.1)与[原始 Windows 验收运行](https://github.com/tuantuan007/figure-workbench/actions/runs/43452637043)核对；当前构建的内部证据保留在[本仓库 Actions](https://github.com/aper-ai/figure-workbench/actions)。
 
 原生验收环境为 Windows Server 2025。数值与流程回归主要使用已知预期值的合成数据；真实实验图像的条带候选、分割结果、染色分级及样本配对仍需结合原始数据复核。IHC 面积加权指数采用 `pixel_weighted_score`，物理测量依赖有效的像素标定。当前版本提供 CPU 模型，不包含专用纤维训练权重、自动图像配准或 FCS 流式门控。
 
