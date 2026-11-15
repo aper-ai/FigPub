@@ -36,7 +36,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p test-results/readme
-          for suite in browser_professional_ui browser_wb_workflow browser_channels browser_histology_fibers browser_instance_review browser_composition; do
+          for suite in browser_professional_ui browser_wb_workflow browser_channels browser_histology_fibers browser_instance_review; do
             echo "::group::Actual application UI: $suite"
             FW_BROWSER_RESULTS="test-results/readme/$suite" python "tests/$suite.py"
             echo "::endgroup::"
@@ -59,7 +59,7 @@ jobs:
               ('多通道显微图像', '通道伪彩、分屏显示与图像处理。', 'browser_channels/01-multichannel-split.png', 'microscopy.png'),
               ('组织与纤维分析', '组织图像定量及形态学工作流程。', 'browser_histology_fibers/histology-fiber-workflow.png', 'histology.png'),
               ('实例人工复核', '分割实例编辑、测量结果复核与工程恢复。', 'browser_instance_review/instance-review-restored.png', 'instance-review.png'),
-              ('科研组图', '图稿画布、对象布局、标注与导出。', 'browser_composition/composition.png', 'composition.png')
+              ('科研组图', '图稿画布、对象布局、标注与导出。', 'browser_professional_ui/composer-1440.png', 'composition.png')
           ]
           gallery, manifest = [], []
           for title, caption, src, dest in entries:
