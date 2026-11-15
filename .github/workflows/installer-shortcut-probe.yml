@@ -1,0 +1,47 @@
+name: Diagnose Windows installer shortcut paths
+
+on:
+  push:
+    branches: [candidate/0.6.2-rc1]
+    paths:
+      - .github/workflows/installer-shortcut-probe.yml
+      - scripts/probe_windows_installer_shortcut.py
+      - scripts/inspect_windows_shortcut.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  shortcut:
+    if: ${{ github.ref == 'refs/heads/candidate/0.6.2-rc1' }}
+    runs-on: windows-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - name: Install the small packaging metadata helper
+        run: python -m pip install packaging==25.0
+      - name: Inspect real installer shortcuts in a disposable Unicode directory
+        run: python scripts/probe_windows_installer_shortcut.py --output .ci-shortcut-probe
+      - name: Retain diagnostic records and the original shortcut
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-shortcut-probe-${{ github.sha }}
+          path: |
+            .ci-shortcut-probe/*.json
+            .ci-shortcut-probe/*.log
+            .ci-shortcut-probe/*.lnk
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
