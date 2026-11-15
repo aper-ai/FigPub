@@ -28,7 +28,7 @@ import webbrowser
 
 from .runtime_paths import bundle_root
 
-TITLE = '图研 · Figure Workbench'
+TITLE = 'FigPub · Scientific Image Studio'
 RUNTIME_HELP = 'https://developer.microsoft.com/microsoft-edge/webview2/'
 SPLASH = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">
@@ -81,7 +81,7 @@ def clear_browser_profile(path: Path, *, attempts: int = 1) -> None:
             return
         except OSError as exc:
             if attempt + 1 == attempts:
-                raise RuntimeError('软件预览缓存未能清理。请关闭残留的图研窗口后重试；清理完成前不会载入工作区。') from exc
+                raise RuntimeError('软件预览缓存未能清理。请关闭残留的FigPub 窗口后重试；清理完成前不会载入工作区。') from exc
             time.sleep(.15)
 
 
@@ -296,7 +296,7 @@ class CloseCoordinator:
 
     def _confirm(self, message):
         try:
-            return bool(self.confirmation('退出图研', message))
+            return bool(self.confirmation('退出 FigPub', message))
         except Exception:
             self.logger.exception('Exit confirmation failed; keeping the editor open.')
             return False
@@ -430,7 +430,7 @@ def run_desktop(directory: Path, port: int, logger: logging.Logger, *, lock_fact
                 if focus_existing_window(directory):
                     return 0
                 time.sleep(.1)
-            notify(TITLE, '图研已经在运行或正在启动。请从任务栏切换到图研窗口。')
+            notify(TITLE, 'FigPub 已经在运行或正在启动。请从任务栏切换到图研窗口。')
             return 0
         browser_profile = prepare_browser_profile(directory)
         write_identity(directory / 'desktop.json',
