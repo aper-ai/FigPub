@@ -38,7 +38,7 @@ def windows_file_metadata(path: Path) -> dict:
     )
     encoded = base64.b64encode(script.encode('utf-16le')).decode('ascii')
     result = subprocess.check_output(
-        ['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+        ['pwsh.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
         text=True, encoding='utf-8', errors='strict',
     )
     return json.loads(result.lstrip('\ufeff'))

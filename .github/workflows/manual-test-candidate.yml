@@ -61,6 +61,48 @@ jobs:
           npm ci
           if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
 
+      - name: Verify installer prerequisites before payload assembly
+        run: |
+          python packaging/fetch_webview2_bootstrapper.py --output .ci-webview/MicrosoftEdgeWebview2Setup.exe --record .ci-manual-test/webview-bootstrapper.json
+          if ($LASTEXITCODE -ne 0) { throw 'Microsoft WebView2 bootstrapper verification failed.' }
+          @'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tempfile
+
+          sys.path.insert(0, 'packaging')
+          from build_windows_installer import find_compiler, digest, TEMPLATE, VERSION, INSTALLER
+
+          compiler, identity = find_compiler()
+          bootstrapper = Path('.ci-webview/MicrosoftEdgeWebview2Setup.exe').resolve()
+          records = Path('.ci-manual-test')
+          with tempfile.TemporaryDirectory(prefix='fw-installer-syntax-') as temporary:
+              root = Path(temporary).resolve()
+              payload, output = root / 'payload', root / 'output'
+              (payload / 'app').mkdir(parents=True)
+              output.mkdir()
+              (payload / 'app/LICENSE').write_text('Synthetic installer syntax fixture.\n', encoding='utf-8')
+              (payload / 'FigureWorkbench.exe').write_bytes(b'MZ' + bytes(62))
+              arguments = [str(compiler), '/Qp', '/O-', f'/DPayloadDir={payload}',
+                           f'/DBootstrapperPath={bootstrapper}', f'/DAppVersion={VERSION}',
+                           f'/DBuildDirectory={VERSION}-{os.environ["GITHUB_SHA"][:12]}',
+                           f'/DOutputDirectory={output}', f'/DOutputName={Path(INSTALLER).stem}', str(TEMPLATE)]
+              compiled = subprocess.run(arguments, capture_output=True, timeout=120)
+              (records / 'installer-syntax.compiler.log').write_bytes(compiled.stdout + compiled.stderr)
+              if compiled.returncode:
+                  print((compiled.stdout + compiled.stderr).decode('utf-8', 'replace'))
+              compiled.check_returncode()
+              assert not any(output.iterdir()), 'Syntax-only compilation unexpectedly emitted installer files.'
+          receipt = {'check': 'installer_script_syntax', 'passed': True, 'compiler': identity,
+                     'template_sha256': digest(TEMPLATE), 'output_disabled': True, 'installer_executed': False}
+          (records / 'installer-syntax.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, indent=2))
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned installer compiler or script syntax preflight failed.' }
+
       - name: Build standalone browser candidate
         run: npm run build:browser
 
@@ -96,8 +138,6 @@ jobs:
 
       - name: Build one Windows setup executable
         run: |
-          python packaging/fetch_webview2_bootstrapper.py --output .ci-webview/MicrosoftEdgeWebview2Setup.exe --record .ci-manual-test/webview-bootstrapper.json
-          if ($LASTEXITCODE -ne 0) { throw 'Microsoft WebView2 bootstrapper verification failed.' }
           python packaging/build_windows_installer.py --toolkit dist/Figure_Workbench_0.6.2_Windows_x64 --webview-bootstrapper .ci-webview/MicrosoftEdgeWebview2Setup.exe --webview-record .ci-manual-test/webview-bootstrapper.json --output dist/Figure_Workbench_0.6.2_Setup.exe --record .ci-manual-test/installer-build.json --expected-commit "$env:GITHUB_SHA"
           if ($LASTEXITCODE -ne 0) { throw 'Single-file Windows installer build failed.' }
 

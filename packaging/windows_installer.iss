@@ -119,7 +119,12 @@ begin
     Result := 'Microsoft WebView2 Runtime could not be started. Check the network connection and run Setup again.';
     Exit;
   end;
-  if ResultCode = 3010 then NeedsRestart := True;
+  if ResultCode = 3010 then
+  begin
+    NeedsRestart := True;
+    Result := 'Microsoft Edge WebView2 Runtime requires a Windows restart. Restart Windows, then run this installer again.';
+    Exit;
+  end;
   if not WebView2Installed() then
     Result := 'Microsoft WebView2 Runtime installation did not complete. Check the network connection, restart Windows if requested, and run Setup again.';
 end;

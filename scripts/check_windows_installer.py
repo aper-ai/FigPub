@@ -32,7 +32,7 @@ def powershell_json(script: str):
     program = "$ErrorActionPreference='Stop';[Console]::OutputEncoding=[System.Text.UTF8Encoding]::new($false);" + script
     encoded = base64.b64encode(program.encode('utf-16le')).decode('ascii')
     return json.loads(subprocess.check_output(
-        ['powershell.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
+        ['pwsh.exe', '-NoProfile', '-NonInteractive', '-EncodedCommand', encoded],
         text=True, encoding='utf-8',
     ).lstrip('\ufeff'))
 
