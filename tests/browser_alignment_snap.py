@@ -196,6 +196,32 @@ class Surface:
             self.undo_and_compare(before)
             self.checked('holding Alt bypasses snapping and reference lines', pixels_per_mm=scale)
 
+            # Modifiers may change after pointerdown. Keep the same drag alive
+            # while Alt temporarily bypasses snapping, then restores it.
+            self.drag(2, dx, 0)
+            near(self.snapshot()[2]['x'], before[0]['x'])
+            assert self.guides()
+            start, matrix = self.current_trace['start'], self.current_trace['matrix']
+            end = (start[0] + dx * matrix['a'], start[1] + dx * matrix['b'])
+            self.page.keyboard.down('Alt')
+            self.page.mouse.move(end[0] + 1, end[1], steps=2)
+            self.page.wait_for_function('()=>!document.querySelector("#snap-guides [data-snap-axis]")')
+            unsnapped = self.snapshot()[2]['x']
+            near(unsnapped, before[2]['x'] + dx + 1 / scale, 1.1 / scale)
+            assert abs(unsnapped - before[0]['x']) > 1 / scale
+            self.current_trace['mid_drag_alt'] = {'unsnapped_x': unsnapped, 'state_with_alt': self.pointer_hit((end[0] + 1, end[1]))}
+            if not level:
+                self.page.screenshot(path=str(self.output / f'{self.kind}-mid-drag-alt.png'), full_page=True)
+            self.page.keyboard.up('Alt')
+            self.page.mouse.move(*end, steps=2)
+            self.page.locator('#snap-guides [data-snap-axis="x"][data-snap-kind="frame"]').wait_for(state='attached')
+            near(self.snapshot()[2]['x'], before[0]['x'])
+            assert any(guide['axis'] == 'x' and guide['visible'] for guide in self.guides())
+            self.current_trace['mid_drag_alt']['resnapped_x'] = self.snapshot()[2]['x']
+            self.release()
+            self.undo_and_compare(before)
+            self.checked('Alt pressed and released during one drag bypasses and restores snapping without cancelling', pixels_per_mm=scale)
+
             self.snapping(False)
             self.drag(2, dx, 0)
             assert not self.guides()

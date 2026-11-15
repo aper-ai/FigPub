@@ -491,6 +491,10 @@ document.addEventListener('keydown', event => {
     return;
   }
   if (gesture && event.key === 'Escape') { event.preventDefault(); cancelGesture(); return; }
+  if (gesture && ['Alt','Shift','Control','Meta'].includes(event.key)) {
+    if (event.key === 'Alt') event.preventDefault();
+    return;
+  }
   if (event.target.closest('input,textarea,select,[contenteditable="true"]') || $('dialog[open]') || busy) return;
   if (gesture) cancelGesture();
   if (command && ['z', 'y', 's', 'a', 'd', 'g'].includes(key)) { event.preventDefault(); const action = key === 'z' ? event.shiftKey ? 'redo' : 'undo' : key === 'y' ? 'redo' : key === 's' ? 'save' : key === 'a' ? 'select-all' : key === 'd' ? 'duplicate' : event.shiftKey ? 'ungroup' : 'group'; if (['undo','redo'].includes(action)) cancelParameterEdit(); else if (!finishParameterEdit()) return; actions[action]?.(); return; }

@@ -97,6 +97,12 @@ test('canvas selection uses laid-out screen coordinates and commits a drag after
   assert.equal($('#studio-svg .selection-outline')?.parentElement.dataset.object,before.id);
   pointer(window,'pointermove',x+8*scale,y+5*scale);
   await until(()=>geometry()[2].transform!==before.transform,'canvas image did not move');
+  const moving=geometry()[2].transform;
+  for(const key of ['Alt','Shift','Control','Meta']) {
+    doc.body.dispatchEvent(new window.KeyboardEvent('keydown',{bubbles:true,cancelable:true,key}));
+    assert.equal(geometry()[2].transform,moving,`${key} must not cancel the active drag`);
+    doc.body.dispatchEvent(new window.KeyboardEvent('keyup',{bubbles:true,key}));
+  }
   pointer(window,'pointerup',x+8*scale,y+5*scale);
   const after=geometry()[2].transform.match(/translate\(([-\d.]+) ([-\d.]+)\)/);
   assert.ok(Math.abs(Number(after[1])-originalX-8)<1e-6);

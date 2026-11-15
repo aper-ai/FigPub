@@ -67,7 +67,7 @@ jobs:
       - name: Install Chromium for the alignment regression
         run: python -m playwright install chromium
 
-      - name: Verify real pointer hits, label alignment and snapping in both studios
+      - name: Verify real pointer hits, alignment and live Alt snapping in both studios
         env:
           FW_ALIGNMENT_RESULTS: .ci-manual-test/alignment-snap
         run: python tests/browser_alignment_snap.py
@@ -120,7 +120,7 @@ jobs:
           alignment_path = output / 'alignment-snap/alignment-snap.json'
           alignment = json.loads(alignment_path.read_text('utf-8'))
           assert alignment['passed'] is True and alignment['real_browser'] is True
-          assert len(alignment['scenarios']) == 22 and all(item['passed'] is True for item in alignment['scenarios'])
+          assert len(alignment['scenarios']) == 26 and all(item['passed'] is True for item in alignment['scenarios'])
           assert {item['surface'] for item in alignment['scenarios']} == {'desktop-web', 'file-browser'}
           assert not alignment.get('browser_errors') and not alignment.get('error')
           assert alignment['html_sha256'] == hashlib.sha256(Path('dist/Figure_Workbench_0.6.2_Browser.html').read_bytes()).hexdigest()
