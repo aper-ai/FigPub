@@ -15,8 +15,10 @@ import logging
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 from types import SimpleNamespace
@@ -63,6 +65,38 @@ def external_reference_allowed(target: str) -> bool:
                 and not any(ord(c) < 32 for c in target))
     except (TypeError, ValueError):
         return False
+
+
+def clear_browser_profile(path: Path, *, attempts: int = 1) -> None:
+    """Remove an owned WebView profile without following directory symlinks."""
+    path = Path(path)
+    for attempt in range(attempts):
+        try:
+            if path.is_symlink():
+                path.unlink()
+            elif path.exists():
+                if not path.is_dir():
+                    raise OSError('浏览缓存位置不是文件夹。')
+                shutil.rmtree(path)
+            return
+        except OSError as exc:
+            if attempt + 1 == attempts:
+                raise RuntimeError('软件预览缓存未能清理。请关闭残留的图研窗口后重试；清理完成前不会载入工作区。') from exc
+            time.sleep(.15)
+
+
+def prepare_browser_profile(directory: Path) -> Path:
+    """Called only after acquiring the single-desktop lock."""
+    cache = Path(directory) / 'cache'
+    if cache.is_symlink():
+        raise RuntimeError('软件缓存目录是外部链接，未执行清理。请先恢复常规缓存目录。')
+    cache.mkdir(parents=True, exist_ok=True)
+    clear_browser_profile(cache / 'desktop', attempts=3)
+    # A previous crash may have interrupted private-mode cleanup. All of these
+    # directories are created by this application and never contain user saves.
+    for path in cache.glob('desktop-private-*'):
+        clear_browser_profile(path, attempts=3)
+    return Path(tempfile.mkdtemp(prefix='desktop-private-', dir=cache))
 
 
 def initial_window_geometry():
@@ -384,6 +418,7 @@ def run_desktop(directory: Path, port: int, logger: logging.Logger, *, lock_fact
         raise RuntimeError('当前桌面客户端支持 Windows 10/11。此平台请使用 --browser 或 --no-browser。')
     lock = lock_factory(directory, filename='desktop.lock')
     backend = None
+    browser_profile = None
     owner = uuid.uuid4().hex
     closed, guarded = threading.Event(), threading.Event()
     state = {'url': None, 'startup_error': None}
@@ -397,6 +432,7 @@ def run_desktop(directory: Path, port: int, logger: logging.Logger, *, lock_fact
                 time.sleep(.1)
             notify(TITLE, '图研已经在运行或正在启动。请从任务栏切换到图研窗口。')
             return 0
+        browser_profile = prepare_browser_profile(directory)
         write_identity(directory / 'desktop.json',
                        {'application': 'figure-workbench-desktop', 'pid': os.getpid(), 'owner': owner})
         try:
@@ -649,7 +685,7 @@ def run_desktop(directory: Path, port: int, logger: logging.Logger, *, lock_fact
 
         icon = bundle_root() / 'resources' / 'app.ico'
         webview.start(boot_and_monitor, gui='edgechromium', debug=False, http_server=False,
-                      private_mode=False, storage_path=str(directory / 'cache' / 'desktop'),
+                      private_mode=True, storage_path=str(browser_profile),
                       icon=str(icon) if icon.is_file() else None,
                       localization={'global.ok': '确定', 'global.cancel': '取消',
                                     'windows.fileFilter.allFiles': '所有文件'})
@@ -666,4 +702,11 @@ def run_desktop(directory: Path, port: int, logger: logging.Logger, *, lock_fact
                 path.unlink()
         except (OSError, ValueError):
             pass
-        lock.close()
+        try:
+            if browser_profile is not None:
+                # pywebview's private mode also attempts removal, but catches
+                # failures internally. Verify the owned directory ourselves.
+                clear_browser_profile(browser_profile, attempts=20)
+        finally:
+            lock.close()
+

@@ -21,8 +21,9 @@ from assemble_windows import PROJECT_ROOT, sha256
 from build_cellpose_candidate import (MANIFEST as CPU_MANIFEST, INTEGRATION as CPU_INTEGRATION,
                                       _files, verify_candidate)
 from build_desktop_launcher import pe_metadata
+from runtime_payload import is_application_source, verify_application_payload, verify_complete_payload
 from upgrade_windows import canonical_path, inventory, verify_member
-from upgrade_windows_0_4 import (MANIFEST, SOURCE_MANIFEST, REPORT, assert_matching_source,
+from upgrade_windows_0_4 import (MANIFEST, SOURCE_MANIFEST, REPORT,
                                  directory_records, json_bytes, manifest_records,
                                  read_json_member, snapshot_source, source_versions, write_zip)
 from upgrade_windows_0_5 import verify_base, install_desktop, verify_launcher
@@ -45,6 +46,41 @@ def component_records(directory: Path) -> tuple[dict, dict]:
     return manifest, records
 
 
+def copy_application_source(source: Path, destination: Path) -> int:
+    """Copy only runtime files from an already verified complete source snapshot."""
+    copied = 0
+    for record in directory_records(source):
+        name = record['path']
+        if not is_application_source(name):
+            continue
+        target = destination / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with (source / name).open('rb') as stream, target.open('xb') as output:
+            shutil.copyfileobj(stream, output, 1024 * 1024)
+        if target.stat().st_size != record['bytes'] or sha256(target) != record['sha256']:
+            raise ValueError('Runtime source changed during snapshot: ' + name)
+        copied += 1
+    return copied
+
+
+def assert_application_matches_source(app: Path, source: Path) -> int:
+    """Every shipped source file must match the full source ZIP byte for byte.
+
+    Each archive has its own inventory manifest, so those manifests intentionally
+    differ. The generated build provenance report is identical in both archives.
+    """
+    app_records = directory_records(app, exclude={SOURCE_MANIFEST})
+    source_records = {record['path']: record for record in directory_records(source, exclude={SOURCE_MANIFEST})}
+    verify_application_payload(record['path'] for record in app_records)
+    expected = {name for name in source_records if is_application_source(name) or name == REPORT}
+    if {record['path'] for record in app_records} != expected:
+        raise ValueError('Windows runtime inventory is not the required subset of the source release.')
+    for record in app_records:
+        if source_records.get(record['path']) != record:
+            raise ValueError('Windows runtime source differs from the source release: ' + record['path'])
+    return len(app_records)
+
+
 def verify_full_directory(directory: Path, *, expected_manifest_sha256: str | None = None) -> dict:
     """Verify the complete payload, including both independent environments."""
     files = _files(directory)
@@ -62,6 +98,7 @@ def verify_full_directory(directory: Path, *, expected_manifest_sha256: str | No
         raise ValueError('Invalid complete toolkit identity or inventory declaration.')
     if set(files) != set(expected) | {MANIFEST}:
         raise ValueError('Complete toolkit inventory differs from its manifest.')
+    verify_complete_payload(files)
     for name, record in expected.items():
         path = files[name]
         if path.stat().st_size != record['bytes'] or sha256(path) != record['sha256']:
@@ -130,6 +167,7 @@ def verify_full_archive(archive: Path, record: dict, *, destination: Path | None
                 or manifest.get('source_identity') != record.get('source_identity')
                 or set(files) != set(expected) | {MANIFEST}):
             raise ValueError('Complete ZIP inventory, source or manifest binding differs.')
+        verify_complete_payload(files)
         if destination is not None:
             if destination.exists() or destination.is_symlink():
                 raise ValueError('Extract the final ZIP into a new directory.')
@@ -192,6 +230,7 @@ START_HERE = '''图研 · Figure Workbench {version} — Windows 完整工具包
 工具包已内置主程序、专用运行环境、Cellpose CPU 分析引擎及 nuclei/cyto3 模型。
 无需单独安装 Python、Node，或下载、合并模型组件。请保留 runtime/、app/、cellpose/
 及随附的许可与清单文件。首次模型分析包含运行环境和模型加载时间。
+客户端不预装实验素材、示例项目或文档截图；导入自己的文件后开始处理。
 
 关闭窗口时会先保存当前编辑，再停止本地计算服务。
 工作区位于 %LOCALAPPDATA%\\FigureWorkbench；升级时保留此目录。
@@ -239,7 +278,8 @@ def build(base_main: Path, launcher: Path, wheels: Path, component: Path, compon
         dependencies, desktop = install_desktop(wheels, main_dir / 'runtime', prior, project_root)
         shutil.copy2(launcher, main_dir / 'FigureWorkbench.exe')
         app = main_dir / 'app'
-        original_snapshot = snapshot_source(project_root, app)
+        original_snapshot = snapshot_source(project_root, source_dir)
+        application_input_files = copy_application_source(source_dir, app)
         created = datetime.now(timezone.utc).isoformat()
         bundled = {'bundled': True, 'version': VERSION, **cpu_verified,
                    'sha256': cpu_record['archive']['sha256'], 'bytes': cpu_record['archive']['bytes'],
@@ -249,18 +289,23 @@ def build(base_main: Path, launcher: Path, wheels: Path, component: Path, compon
                   'windows_runtime_executed': False, 'release_gate_passed': False,
                   'base_release_verification': provenance, 'native_launcher': launcher_record,
                   'desktop_dependencies': desktop, 'source_input_files': len(original_snapshot),
+                  'application_input_files': application_input_files,
                   'source_identity': source_input_identity, 'cellpose_component': bundled,
-                  'source_release_and_windows_app_byte_identical': True,
+                  'runtime_source_matches_source_release': True,
+                  'client_payload_policy': 'runtime_code_resources_and_licenses_only',
                   'test_records': {'tests_executed_by_this_builder': False},
                   'requirements': ['Actual final ZIP extraction, both bundled CPU models and native workflows must pass.',
                                    'Requires Microsoft WebView2 Runtime.']}
-        (app / REPORT).write_bytes(json_bytes(report))
-        source_records = directory_records(app, exclude={SOURCE_MANIFEST})
-        (app / SOURCE_MANIFEST).write_bytes(json_bytes({'application': 'Figure Workbench', 'version': VERSION,
-            'created_at_utc': created, 'files': source_records, 'file_count': len(source_records),
-            'manifest_self_excluded': True}))
-        shutil.copytree(app, source_dir)
-        source_count = assert_matching_source(app, source_dir)
+        for directory, scope in ((app, 'runtime'), (source_dir, 'developer_source')):
+            report_path = directory / REPORT
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_bytes(json_bytes(report))
+            source_records = directory_records(directory, exclude={SOURCE_MANIFEST})
+            (directory / SOURCE_MANIFEST).write_bytes(json_bytes({'application': 'Figure Workbench',
+                'version': VERSION, 'scope': scope, 'created_at_utc': created, 'files': source_records,
+                'file_count': len(source_records), 'manifest_self_excluded': True}))
+        application_count = assert_application_matches_source(app, source_dir)
+        source_count = len(directory_records(source_dir))
         for record in directory_records(component):
             target = main_dir / record['path']
             if target.exists():
@@ -289,6 +334,9 @@ def build(base_main: Path, launcher: Path, wheels: Path, component: Path, compon
         full_verified = verify_full_directory(main_dir)
         result = {'version': VERSION, 'edition': 'complete', 'output': str(output),
                   'source_output': str(source_output), 'source_files': source_count,
+                  'application_source_files': application_count,
+                  'runtime_source_matches_source_release': True,
+                  'source_archive_snapshot_sha256': sha256(source_dir / SOURCE_MANIFEST),
                   'native_launcher': launcher_record, 'source_snapshot_sha256': snapshot_hash,
                   'source_identity': source_input_identity, 'cellpose_component': bundled,
                   'full_toolkit_manifest_sha256': full_verified['manifest_sha256'],

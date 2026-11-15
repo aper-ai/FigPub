@@ -7,6 +7,14 @@ const copy = value => JSON.parse(JSON.stringify(value));
 const MAX_PIXELS = 16000000, MAX_OPERATIONS = 200;
 const operationId = () => `ir_${globalThis.crypto?.randomUUID?.() || `${Date.now()}_${Math.random().toString(16).slice(2)}`}`;
 
+export function clearInstanceReviewSessions() {
+  for(const session of sessions.values()){
+    session.disposed=true;session.controller?.abort();session.labels?.fill(0);session.labels=null;session.result=null;session.draft=null;session.selected.clear();session.seeds=[];session.polygon=[];
+  }
+  sessions.clear();
+  if(rectangle){try{rectangle.svg.releasePointerCapture(rectangle.pointerId);}catch{}rectangle=null;if(deps)deps.state.interactionLock=false;}
+}
+
 export function normalizeReviewDraft(value, baseHash) {
   if (!value) return {base_mask_sha256:baseHash,operations:[],cursor:0};
   if (value.base_mask_sha256 !== baseHash) throw new Error('保存的复核记录不属于当前原始分割。');
@@ -100,16 +108,17 @@ function requestFor(selection,session,draft) {
 }
 
 async function decodeCurrent(session,selection) {
+  if(session.disposed)return;
   const mask=currentMask(session,selection);
   if(session.maskHash===mask.sha256 || session.decodePending)return;
   session.decodePending=true;const key=mask.sha256;
-  try {const labels=await decodeReviewMask(mask);if(currentMask(session,selection).sha256===key){session.labels=labels;session.maskHash=key;}}
-  catch(error){session.error=error.message;}
-  finally{session.decodePending=false;deps.emit();}
+  try {const labels=await decodeReviewMask(mask);if(!session.disposed&&currentMask(session,selection).sha256===key){session.labels=labels;session.maskHash=key;}else labels.fill(0);}
+  catch(error){if(!session.disposed)session.error=error.message;}
+  finally{session.decodePending=false;if(!session.disposed)deps.emit();}
 }
 
 async function runReview(session,selection,draft,{commit=false}={}) {
-  if(session.pending || selection.stale || !selection.persisted || session.invalid)return false;
+  if(session.disposed || session.pending || selection.stale || !selection.persisted || session.invalid)return false;
   const sourceSignature=session.signature;
   const recipeUnchanged=()=>reviewSignature(normalizeReviewDraft(deps.state.project.settings.instance_reviews?.[selection.record.id],selection.result.instance_mask.sha256))===sourceSignature;
   session.pending=true;session.paused=false;session.error='';session.controller=new AbortController();deps.emit();
@@ -136,7 +145,7 @@ async function runReview(session,selection,draft,{commit=false}={}) {
 }
 
 function ensureLoaded(session,selection) {
-  if(!session.open || session.invalid || selection.stale || !selection.persisted || session.pending || session.paused || session.error)return;
+  if(session.disposed || !session.open || session.invalid || selection.stale || !selection.persisted || session.pending || session.paused || session.error)return;
   if(!session.result)queueMicrotask(()=>runReview(session,selection,session.draft));
   else if(!session.labels && !session.decodePending)queueMicrotask(()=>decodeCurrent(session,selection));
 }
@@ -219,7 +228,7 @@ async function action(name) {
       if(name==='csv')await deps.saveBlob(new Blob([csvFor(session.result || selection.result)],{type:'text/csv;charset=utf-8'}),`instances_reviewed_${selection.record.id}.csv`,{signal:session.controller.signal});
       else {
         await deps.flushSave();const body=requestFor(selection,session,session.draft);
-        const response=await fetch('/api/instances/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:session.controller.signal});
+        const response=await fetch('/api/instances/export',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),signal:session.controller.signal});
         if(!response.ok){let payload;try{payload=await response.json();}catch{}throw new Error(payload?.detail || '实例标签导出失败');}
         await deps.saveBlob(await response.blob(),`instances_reviewed_${selection.record.id}.tif`,{signal:session.controller.signal});
       }

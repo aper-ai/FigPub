@@ -22,14 +22,14 @@ test('new-user qPCR → real analysis → chart → PDF/project → reopen, thro
   }
   const child = spawn(python, ['tests/ui_api_bridge.py'], {cwd: root, stdio: ['pipe', 'pipe', 'pipe']});
   let nextId = 0, ready = false, stderr = '';
-  const pending = new Map();
+  const pending = new Map(), bridgeErrors = [];
   child.stderr.on('data', data => {stderr += data.toString();});
   createInterface({input: child.stdout}).on('line', line => {
     const message = JSON.parse(line);
     if (message.ready) {ready = true; return;}
     const entry = pending.get(message.id);
     pending.delete(message.id);
-    if (message.error) entry?.reject(new Error(message.error));
+    if (message.error) {bridgeErrors.push(message.error); entry?.reject(new Error(message.error));}
     else entry?.resolve(message.result);
   });
   child.on('exit', code => {
@@ -55,10 +55,15 @@ test('new-user qPCR → real analysis → chart → PDF/project → reopen, thro
   async function until(predicate, description, timeout = 15000) {
     const deadline = Date.now() + timeout;
     while (Date.now() < deadline) {
+      // The production request wrapper translates rejected fetches into a
+      // connection notice. Preserve the actual ASGI traceback before that
+      // notice expires, so a missing runtime dependency is not a UI timeout.
+      if (bridgeErrors.length) throw new Error(`${description}; ASGI adapter error:\n${bridgeErrors.join('\n')}`);
       if (predicate()) return;
       await delay(20);
     }
-    throw new Error(`${description}; errors: ${window.document.getElementById('toast-region')?.textContent || ''}; ${stderr}`);
+    const error = window.__testWorkbench?.state.lastError || window.document.getElementById('toast-region')?.textContent || '';
+    throw new Error(`${description}; errors: ${error}; ${stderr}`);
   }
   await until(() => ready, 'ASGI service readiness');
   const requests = [], downloads = [], objectUrls = new Map(), uiErrors = [];

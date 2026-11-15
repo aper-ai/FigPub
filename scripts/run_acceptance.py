@@ -11,11 +11,15 @@ import sys
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from scripts.release_config import BROWSER
+
+OFFLINE_SUITES = frozenset({'test_browser_studio_ui.py', 'browser_auto_apply.py'})
 SUITES = [
     'browser_workflow.py', 'browser_inputs.py', 'browser_channels.py',
     'browser_wb_workflow.py', 'browser_histology_fibers.py', 'browser_instance_review.py',
     'browser_composition.py', 'browser_onboarding.py', 'browser_professional_ui.py', 'browser_task_lifecycle.py',
-    'test_browser_studio_ui.py',
+    'test_browser_studio_ui.py', 'browser_auto_apply.py',
 ]
 REPORT_NAMES = {
     'browser_channels.py': 'browser-channel-results.json',
@@ -23,6 +27,7 @@ REPORT_NAMES = {
     'browser_composition.py': 'report.json',
     'browser_onboarding.py': 'onboarding-report.json',
     'test_browser_studio_ui.py': 'report.json',
+    'browser_auto_apply.py': 'report.json',
 }
 
 
@@ -64,7 +69,9 @@ def run(output: Path):
         evidence_path = folder / REPORT_NAMES.get(suite, 'browser-report.json')
         # A failed launch must never inherit a previous run's success report.
         evidence_path.unlink(missing_ok=True)
-        environment = {**os.environ, 'FW_BROWSER_RESULTS': str(folder), 'FW_BROWSER_STUDIO_RESULTS': str(folder)}
+        environment = {**os.environ, 'FW_BROWSER_RESULTS': str(folder), 'FW_BROWSER_STUDIO_RESULTS': str(folder),
+                       'FW_AUTO_APPLY_RESULTS': str(folder),
+                       'BROWSER_STUDIO_HTML': str(ROOT / 'dist' / BROWSER)}
         start = time.monotonic()
         try:
             completed = subprocess.run([sys.executable, str(ROOT / 'tests' / suite)], cwd=ROOT,

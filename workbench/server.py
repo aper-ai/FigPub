@@ -1,5 +1,6 @@
 """Loopback HTTP API. Routes only coordinate typed storage, workers and exporters."""
 from __future__ import annotations
+import asyncio
 import json
 import hashlib
 import logging
@@ -18,12 +19,92 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from .jobs import JobManager
 from . import __version__
 from .runtime_paths import bundle_root, default_data_dir
-from .storage import (ConflictError, MAX_ARCHIVE_BYTES, MAX_FILE_BYTES, ProjectStore,
+from .storage import (ConflictError, WorkspaceRecoveryPending, WorkspaceCleanupPending,
+                      MAX_ARCHIVE_BYTES, MAX_FILE_BYTES, ProjectStore,
                       json_safe, json_bytes, validate_project)
 
 VERSION = __version__
 PACKAGE_ROOT = bundle_root()
 LOGGER = logging.getLogger(__name__)
+
+
+class WorkspaceRequestGate:
+    """Drain API work around cleanup so an old request cannot rewrite copies."""
+
+    def __init__(self, app, store):
+        self.app, self.store = app, store
+        self.condition = asyncio.Condition()
+        self.active = 0
+        self.clearing = False
+        self.waiting = 0
+        self.generation = 0
+
+    async def __call__(self, scope, receive, send):
+        if scope['type'] != 'http' or not scope.get('path', '').startswith('/api/'):
+            return await self.app(scope, receive, send)
+        path, method = scope['path'], scope['method']
+        if path == '/api/demo':
+            # Retired production endpoint must not fall through to the static
+            # site's catch-all mount or invoke a testing fixture.
+            return await JSONResponse({'detail': 'Not Found'}, status_code=404)(scope, receive, send)
+        clearing = path == '/api/workspace/clear' and method == 'POST'
+        safe_paths = {'/api/health', '/api/cellpose/status', '/api/project', '/api/workspace/status', '/api/benchmarks'}
+        safe_read = path in safe_paths and method in {'GET', 'HEAD'}
+        request_generation = self.generation
+        reject_stale = False
+        async with self.condition:
+            if clearing:
+                # The boundary begins when cleanup is requested, not only when
+                # deletion starts. Late uploads must not queue behind it and
+                # recreate private sources immediately after successful clear.
+                self.generation += 1
+                self.waiting += 1
+                try:
+                    await asyncio.wait_for(self.condition.wait_for(lambda: not self.active and not self.clearing), 10)
+                except asyncio.TimeoutError:
+                    response = JSONResponse({'detail': '仍有文件或预览请求正在处理，请稍后重试清理。',
+                                             'code': 'workspace_busy'}, status_code=409)
+                    return await response(scope, receive, send)
+                finally:
+                    # Client disconnect/cancellation must release its queue
+                    # ticket as well; otherwise every later API request waits.
+                    self.waiting -= 1
+                    self.condition.notify_all()
+                self.clearing = True
+            else:
+                reject_stale = not safe_read and (self.clearing or self.waiting
+                                                  or request_generation != self.generation)
+                if not reject_stale:
+                    await self.condition.wait_for(lambda: not self.clearing and not self.waiting)
+                    reject_stale = not safe_read and request_generation != self.generation
+                    if not reject_stale:
+                        self.active += 1
+        if reject_stale:
+            return await JSONResponse({'detail': '工作区正在清理或已发生切换。此操作未执行，请清理完成后重新选择文件。',
+                                       'code': 'workspace_changed'}, status_code=409)(scope, receive, send)
+        try:
+            allowed = safe_read
+            if self.store.cleanup_pending and not (allowed or clearing):
+                response = JSONResponse({'detail': '本机工作区清理尚未完成，请先重试清理。',
+                                         'code': 'workspace_cleanup_pending'}, status_code=409)
+                return await response(scope, receive, send)
+            choosing = method == 'POST' and path in {'/api/project/new', '/api/workspace/restore', '/api/workspace/clear'}
+            if self.store.has_pending_recovery and not (allowed or choosing):
+                response = JSONResponse({'detail': '检测到上次工作区，请先选择恢复、明确新建或清除本机工作区。',
+                                         'code': 'workspace_recovery_pending'}, status_code=409)
+                return await response(scope, receive, send)
+            source_request = re.fullmatch(r'/api/assets/([a-f0-9]{64})/[^/]+', path)
+            if source_request and method in {'GET', 'HEAD'} and source_request.group(1) not in self.store.registry:
+                return await JSONResponse({'detail': 'Source is no longer present in this workspace.'},
+                                          status_code=404)(scope, receive, send)
+            return await self.app(scope, receive, send)
+        finally:
+            async with self.condition:
+                if clearing:
+                    self.clearing = False
+                else:
+                    self.active -= 1
+                self.condition.notify_all()
 
 
 class WorkbenchStaticFiles(StaticFiles):
@@ -68,9 +149,10 @@ async def _read_upload(upload: UploadFile, maximum=MAX_FILE_BYTES):
     return b''.join(chunks)
 
 
-def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: str | None = None) -> FastAPI:
+def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: str | None = None,
+               restore_workspace: bool = False) -> FastAPI:
     resource_root = bundle_root()
-    store = ProjectStore(data_dir or default_data_dir())
+    store = ProjectStore(data_dir or default_data_dir(), restore_on_start=restore_workspace)
     manager = JobManager(store, runner=runner)
     from .preview_cache import PreviewCache, PreviewBusyError
     channel_previews = PreviewCache()
@@ -90,6 +172,7 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
                   docs_url=None, redoc_url=None, openapi_url=None)
     app.state.store = store
     app.state.jobs = manager
+    app.add_middleware(WorkspaceRequestGate, store=store)
     from .workflow_api import register_workflow_routes
     register_workflow_routes(app, store)
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=['localhost', '127.0.0.1', '[::1]', 'testserver'])
@@ -106,6 +189,13 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
         response = await call_next(request)
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers['Referrer-Policy'] = 'no-referrer'
+        if request.url.path.startswith('/api/'):
+            # Originals, rendered previews, pixel buffers and project metadata
+            # belong to the user and must not become persistent browser assets.
+            response.headers['Cache-Control'] = 'no-store'
+            response.headers['Pragma'] = 'no-cache'
+        if request.url.path == '/api/workspace/clear' and 200 <= response.status_code < 300:
+            response.headers['Clear-Site-Data'] = '"cache"'
         # App code, sources and workers are local. No external CDN/telemetry/API.
         response.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; worker-src 'self' blob:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         return response
@@ -113,6 +203,14 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
     @app.exception_handler(ConflictError)
     async def conflict_handler(request, exc):
         return JSONResponse({'detail': str(exc), 'code': 'revision_conflict', 'current_revision': store.get_project()['revision']}, status_code=409)
+
+    @app.exception_handler(WorkspaceRecoveryPending)
+    async def recovery_handler(request, exc):
+        return JSONResponse({'detail': str(exc), 'code': 'workspace_recovery_pending'}, status_code=409)
+
+    @app.exception_handler(WorkspaceCleanupPending)
+    async def cleanup_handler(request, exc):
+        return JSONResponse({'detail': str(exc), 'code': 'workspace_cleanup_pending'}, status_code=409)
 
     @app.exception_handler(ValidationError)
     async def schema_handler(request, exc):
@@ -175,9 +273,26 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
     def project_new(payload: dict = Body(default={})):
         return store.reset(str(payload.get('title') or '未命名图稿'))
 
-    @app.post('/api/demo')
-    def demo():
-        return store.demo()
+    @app.get('/api/workspace/status')
+    def workspace_status():
+        return store.workspace_status()
+
+    @app.post('/api/workspace/restore')
+    def workspace_restore():
+        return store.restore_workspace()
+
+    @app.post('/api/workspace/clear')
+    def workspace_clear(payload: dict = Body(default={})):
+        if payload.get('confirm') is not True:
+            raise HTTPException(400, '请明确确认删除软件保存的本机工作区副本。')
+        with manager.lock:
+            if any(job.get('_active', False) for job in manager.jobs.values()):
+                return JSONResponse({'detail': '分析任务尚未完全结束，请等待完成或取消后重试清理。',
+                                     'code': 'workspace_busy'}, status_code=409)
+            result = store.clear_workspace()
+            manager.jobs.clear()
+            channel_previews.clear()
+            return result
 
     @app.post('/api/assets')
     async def assets(files: list[UploadFile] = File(...)):
@@ -203,14 +318,14 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
                 low: float | None = None, high: float | None = None, gamma: float = 1, invert: bool = False,
                 channel: int | None = Query(None, ge=0), series: int = Query(0, ge=0), frame: int | None = Query(None, ge=0)):
         data = store.preview(asset_id, max_size, page, low, high, gamma, invert, channel, series=series, frame=frame)
-        return Response(data, media_type='image/png', headers={'Cache-Control': 'private, max-age=31536000, immutable'})
+        return Response(data, media_type='image/png', headers={'Cache-Control': 'no-store'})
 
     @app.get('/api/assets/{asset_id}/original')
     def original(asset_id: str):
         path = store.resolve(asset_id)
         name = store.public_asset(asset_id)['name']
         return FileResponse(path, media_type='application/octet-stream', filename=name,
-                            headers={'X-Content-Type-Options': 'nosniff'})
+                            headers={'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store'})
 
     @app.get('/api/assets/{asset_id}/channels')
     def channel_descriptor(asset_id: str, series: int = Query(0, ge=0), frame: int = Query(0, ge=0),
@@ -236,7 +351,7 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
         view, crop = validated['view'], payload.get('crop')
         key = hashlib.sha256(json_bytes({'view': view, 'crop': crop, 'max_size': max_size})).hexdigest()
         data = channel_previews.get_or_create(key, lambda: png_bytes(render_view(store, view, crop=crop, max_size=max_size)[0]))
-        return Response(data, media_type='image/png', headers={'Cache-Control': 'private, max-age=86400', 'ETag': f'"{key}"'})
+        return Response(data, media_type='image/png', headers={'Cache-Control': 'no-store'})
 
     @app.post('/api/channel-view/auto-range')
     def channel_view_range(payload: dict = Body(...)):
@@ -264,7 +379,7 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
             'X-Image-Width': str(result['width']), 'X-Image-Height': str(result['height']),
             'X-Source-Width': str(result['source_width']), 'X-Source-Height': str(result['source_height']),
             'X-Bit-Depth': str(result['bit_depth']), 'X-Pixel-Format': 'float32-le',
-            'Cache-Control': 'private, max-age=86400',
+            'Cache-Control': 'no-store',
         }
         return Response(result['array'].tobytes(order='C'), media_type='application/octet-stream', headers=headers)
 
@@ -414,3 +529,4 @@ def create_app(data_dir: str | Path | None = None, *, runner=None, instance_id: 
 
 # Use create_app as an ASGI factory. Importing this module never opens a project
 # or starts worker pools; the launcher acquires its single-writer lock first.
+

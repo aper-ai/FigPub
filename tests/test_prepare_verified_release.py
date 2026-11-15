@@ -68,7 +68,8 @@ def bundle(tmp_path, monkeypatch):
         'desktop/native-acceptance.json': {'passed': True, 'platform': 'win32', 'native_window_verified': True,
             'backend_stopped': True, 'source_commit': commit, 'source_identity': identity,
             'tested_application_sha256': 'd' * 64, 'source_snapshot_sha256': 'e' * 64,
-            'cellpose_component_manifest_sha256': 'c' * 64, 'scenarios': [{'name': 'synthetic native scenario', 'passed': True}]},
+            'cellpose_component_manifest_sha256': 'c' * 64,
+            'scenarios': [{'name': name, 'passed': True} for name in sorted(release.release_gate.NATIVE_REQUIRED_SCENARIOS)]},
         'windows-build.json': {'version': release.VERSION, 'edition': 'complete', 'source_identity': identity,
             'native_launcher': {'sha256': 'd' * 64}, 'source_snapshot_sha256': 'e' * 64,
             'archives': [records[release.FULL], records[release.SOURCE]],
@@ -96,8 +97,9 @@ def bundle(tmp_path, monkeypatch):
     for suite in release.release_gate.SUITES:
         name = f"acceptance/{Path(suite).stem}/{release.release_gate.REPORT_NAMES.get(suite, 'browser-report.json')}"
         report = {'passed': True, 'browser_errors': [], 'scenarios': [{'name': 'synthetic actual scenario', 'passed': True}]}
-        if suite == 'test_browser_studio_ui.py':
-            report.update(html_sha256=records[release.BROWSER]['sha256'], html_bytes=records[release.BROWSER]['bytes'])
+        if suite in release.release_gate.OFFLINE_SUITES:
+            report.update(entry=release.BROWSER, real_browser=True,
+                          html_sha256=records[release.BROWSER]['sha256'], html_bytes=records[release.BROWSER]['bytes'])
         reports[name] = report
         reports['acceptance/browser-acceptance.json']['suites'].append({
             'suite': suite, 'passed': True, 'evidence_sha256': digest(encoded(report))})
@@ -137,7 +139,10 @@ def bundle(tmp_path, monkeypatch):
             'repository': repository, 'commit': commit, 'run_id': run_id}
 
 
-def test_complete_verified_files_are_delivered_byte_for_byte_with_auditable_receipts(bundle):
+@pytest.mark.parametrize('event', ['push', 'workflow_dispatch', 'create'])
+def test_complete_verified_files_are_delivered_byte_for_byte_with_auditable_receipts(bundle, event):
+    bundle['metadata']['run']['event'] = event
+    bundle['materialize']()
     result = bundle['prepare']()
     output = bundle['paths']['output']
     assert {item['file'] for item in result['assets']} == release.ATTACHMENTS
@@ -148,7 +153,8 @@ def test_complete_verified_files_are_delivered_byte_for_byte_with_auditable_rece
     assert receipt['published'] is False and receipt['candidate_bytes_repacked'] is False
     assert receipt['release_gate']['passed'] and receipt['source_identity'] == bundle['identity']
     assert receipt['test_counts'] == {'python': 2, 'frontend': 1, 'browser_suites': len(release.release_gate.SUITES),
-        'browser_scenarios': len(release.release_gate.SUITES), 'native_scenarios': 1, 'portable_official_models': 2}
+        'browser_scenarios': len(release.release_gate.SUITES),
+        'native_scenarios': len(release.release_gate.NATIVE_REQUIRED_SCENARIOS), 'portable_official_models': 2}
     checksums = dict(line.split('  ', 1)[::-1] for line in (output / release.CHECKSUMS).read_text().splitlines())
     assert set(checksums) == release.PACKAGES | {release.QA, release.RECEIPT}
     for record in result['assets']:

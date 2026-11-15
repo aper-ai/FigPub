@@ -1,0 +1,308 @@
+name: Build Windows candidate for manual testing
+
+# This separate path produces a prerelease for the owner's own testing.
+# It does not run or replace the validated-release acceptance workflow.
+on:
+  push:
+    branches: [candidate/0.6.2-rc1]
+    paths: [.github/workflows/manual-test-candidate.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manual-test-candidate-v0.6.2-rc.2
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ github.ref == 'refs/heads/candidate/0.6.2-rc1' }}
+    runs-on: windows-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      MPLBACKEND: Agg
+      CANDIDATE_TAG: v0.6.2-rc.2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Require an unused candidate tag and release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = process.env.CANDIDATE_TAG;
+            const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
+            if (releases.some(release => release.tag_name === tag))
+              throw new Error(`Candidate ${tag} already exists; it will not be overwritten.`);
+            let existing;
+            try { existing = await github.rest.git.getRef({...context.repo, ref: `tags/${tag}`}); }
+            catch (error) { if (error.status !== 404) throw error; }
+            if (existing) throw new Error(`Tag ${tag} already exists; it will not be moved.`);
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install -r requirements-dev.txt -r requirements-desktop.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Application dependency installation failed.' }
+          python -m pip install ziglang==0.15.2
+          if ($LASTEXITCODE -ne 0) { throw 'Launcher compiler installation failed.' }
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
+
+      - name: Verify signed prerequisites, compiler engine identity and setup syntax
+        run: |
+          python packaging/fetch_webview2_bootstrapper.py --output .ci-webview/MicrosoftEdgeWebview2Setup.exe --record .ci-manual-test/webview-bootstrapper.json
+          if ($LASTEXITCODE -ne 0) { throw 'Microsoft WebView2 bootstrapper verification failed.' }
+          @'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tempfile
+
+          sys.path.insert(0, 'packaging')
+          from build_windows_installer import find_compiler, digest, TEMPLATE, VERSION, INSTALLER
+
+          compiler, identity = find_compiler()
+          bootstrapper = Path('.ci-webview/MicrosoftEdgeWebview2Setup.exe').resolve()
+          records = Path('.ci-manual-test')
+          with tempfile.TemporaryDirectory(prefix='fw-installer-syntax-') as temporary:
+              root = Path(temporary).resolve()
+              payload, output = root / 'payload', root / 'output'
+              (payload / 'app').mkdir(parents=True)
+              output.mkdir()
+              (payload / 'app/LICENSE').write_text('Synthetic installer syntax fixture.\n', encoding='utf-8')
+              (payload / 'FigureWorkbench.exe').write_bytes(b'MZ' + bytes(62))
+              arguments = [str(compiler), '/Qp', '/O-', f'/DPayloadDir={payload}',
+                           f'/DBootstrapperPath={bootstrapper}', f'/DAppVersion={VERSION}',
+                           f'/DBuildDirectory={VERSION}-{os.environ["GITHUB_SHA"][:12]}',
+                           f'/DOutputDirectory={output}', f'/DOutputName={Path(INSTALLER).stem}', str(TEMPLATE)]
+              compiled = subprocess.run(arguments, capture_output=True, timeout=120)
+              (records / 'installer-syntax.compiler.log').write_bytes(compiled.stdout + compiled.stderr)
+              if compiled.returncode:
+                  print((compiled.stdout + compiled.stderr).decode('utf-8', 'replace'))
+              compiled.check_returncode()
+              assert not any(output.iterdir()), 'Syntax-only compilation unexpectedly emitted installer files.'
+          receipt = {'check': 'installer_script_syntax', 'passed': True, 'compiler': identity,
+                     'template_sha256': digest(TEMPLATE), 'output_disabled': True, 'installer_executed': False}
+          (records / 'installer-syntax.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, indent=2))
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned installer compiler or script syntax preflight failed.' }
+
+      - name: Build standalone browser candidate
+        run: npm run build:browser
+
+      - name: Install Chromium for the alignment regression
+        run: python -m playwright install chromium
+
+      - name: Verify live canvas readiness, pointer hits, alignment and Alt snapping in both studios
+        env:
+          FW_ALIGNMENT_RESULTS: .ci-manual-test/alignment-snap
+        run: python tests/browser_alignment_snap.py
+
+      - name: Prepare isolated Cellpose CPU dependencies and pinned official weights
+        run: python scripts/prepare_cellpose_acceptance.py --output .ci-cellpose --record .ci-manual-test/model-environment.json
+
+      - name: Fetch the pinned Windows runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download build-runtime-0.4.0 --repo "$env:GITHUB_REPOSITORY" --pattern Figure_Workbench_0.4.0_Windows_Main.zip --dir .ci-input
+
+      - name: Assemble the portable nuclei and cyto3 component
+        run: python packaging/build_cellpose_candidate.py --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --environment .ci-cellpose --output dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --record .ci-manual-test/portable-cellpose-build.json
+
+      - name: Build the native launcher and complete Windows package
+        run: |
+          python packaging/fetch_desktop_dependencies.py --output .ci-desktop-wheels
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop dependency preparation failed.' }
+          $zigPath = python -c "import ziglang; from pathlib import Path; print(Path(ziglang.__file__).parent / 'zig.exe')"
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned launcher compiler is unavailable.' }
+          python packaging/build_desktop_launcher.py --zig "$zigPath" --output .ci-input/FigureWorkbench.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Native launcher compilation failed.' }
+          python packaging/build_windows_full.py build --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --launcher .ci-input/FigureWorkbench.exe --desktop-wheels .ci-desktop-wheels --component dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --component-record .ci-manual-test/portable-cellpose-build.json --output dist/Figure_Workbench_0.6.2_Windows_x64 --record .ci-manual-test/windows-build.json
+          if ($LASTEXITCODE -ne 0) { throw 'Complete toolkit assembly failed.' }
+
+      - name: Build one Windows setup executable
+        id: build_setup
+        run: |
+          python packaging/build_windows_installer.py --toolkit dist/Figure_Workbench_0.6.2_Windows_x64 --webview-bootstrapper .ci-webview/MicrosoftEdgeWebview2Setup.exe --webview-record .ci-manual-test/webview-bootstrapper.json --output dist/Figure_Workbench_0.6.2_Setup.exe --record .ci-manual-test/installer-build.json --expected-commit "$env:GITHUB_SHA"
+          if ($LASTEXITCODE -ne 0) { throw 'Single-file Windows installer build failed.' }
+
+      - name: Verify Unicode shortcuts, per-user installation, reinstall, project preservation and uninstall
+        run: python scripts/check_windows_installer.py --installer dist/Figure_Workbench_0.6.2_Setup.exe --build-record .ci-manual-test/installer-build.json --output .ci-manual-test/installer-smoke.json
+
+      - name: Record internal candidate identities
+        run: |
+          @'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path('.ci-manual-test')
+          build = json.loads((output / 'windows-build.json').read_text('utf-8'))
+          assert build['source_identity']['commit'] == os.environ['GITHUB_SHA']
+          assert build['source_identity']['clean'] is True
+          assert build['windows_runtime_executed'] is False and build['release_gate_passed'] is False
+          alignment_path = output / 'alignment-snap/alignment-snap.json'
+          alignment = json.loads(alignment_path.read_text('utf-8'))
+          assert alignment['passed'] is True and alignment['real_browser'] is True
+          assert len(alignment['scenarios']) == 26 and all(item['passed'] is True for item in alignment['scenarios'])
+          assert {item['surface'] for item in alignment['scenarios']} == {'desktop-web', 'file-browser'}
+          assert not alignment.get('browser_errors') and not alignment.get('error')
+          assert alignment['html_sha256'] == hashlib.sha256(Path('dist/Figure_Workbench_0.6.2_Browser.html').read_bytes()).hexdigest()
+          browser_evidence = {'passed': True, 'real_browser': True, 'scenario_count': len(alignment['scenarios']),
+                              'report_sha256': hashlib.sha256(alignment_path.read_bytes()).hexdigest(),
+                              'html_sha256': alignment['html_sha256']}
+          files = [Path('dist') / ('Figure_Workbench_0.6.2_' + suffix) for suffix in
+                   ('Windows_Full.zip', 'Source.zip', 'Browser.html', 'Setup.exe')]
+          assets = []
+          for path in files:
+              with path.open('rb') as stream:
+                  digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+              assets.append({'name': path.name, 'bytes': path.stat().st_size, 'sha256': digest})
+          receipt = {'tag': os.environ['CANDIDATE_TAG'], 'source_commit': os.environ['GITHUB_SHA'],
+                     'status': 'manual_testing_pending', 'windows_native_acceptance_passed': False,
+                     'packaged_model_inference_executed': False, 'release_gate_passed': False,
+                     'build': build, 'browser_alignment_acceptance': browser_evidence, 'internal_assets': assets}
+          (output / 'MANUAL_TEST_BUILD.json').write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n', 'utf-8')
+          (output / 'SHA256SUMS').write_text(''.join(f"{item['sha256']}  {item['name']}\n" for item in assets), 'utf-8')
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate metadata preparation failed.' }
+
+      - name: Prepare the single public installer
+        run: python scripts/prepare_installer_release.py prepare --installer dist/Figure_Workbench_0.6.2_Setup.exe --build-record .ci-manual-test/installer-build.json --smoke-record .ci-manual-test/installer-smoke.json --output .ci-manual-test/public --repository "$env:GITHUB_REPOSITORY" --expected-commit "$env:GITHUB_SHA" --tag "$env:CANDIDATE_TAG" --prerelease
+
+      - name: Retain internal packages and verification evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-test-candidate-${{ github.sha }}
+          compression-level: 0
+          path: |
+            dist/Figure_Workbench_0.6.2_Setup.exe
+            dist/Figure_Workbench_0.6.2_Windows_Full.zip
+            dist/Figure_Workbench_0.6.2_Source.zip
+            dist/Figure_Workbench_0.6.2_Browser.html
+            .ci-manual-test/alignment-snap/
+            .ci-manual-test/*.json
+            .ci-manual-test/*.log
+            .ci-manual-test/SHA256SUMS
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload, verify and publish only the setup executable
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          @'
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import re
+          import time
+          from scripts.prepare_installer_release import verified_prepared_manifest, verify_upload
+
+          repository, tag = os.environ['GITHUB_REPOSITORY'], os.environ['CANDIDATE_TAG']
+          output = Path('.ci-manual-test')
+          public = output / 'public'
+          manifest, installer = verified_prepared_manifest(public, repository, os.environ['GITHUB_SHA'])
+          paths = [public / item['path'] for item in manifest['assets']]
+          assert len(paths) == 1 and paths[0].name == 'Figure_Workbench_0.6.2_Setup.exe'
+          subprocess.run(['gh', 'release', 'create', tag, '--repo', repository,
+                          '--target', os.environ['GITHUB_SHA'], '--draft', '--prerelease', '--latest=false',
+                          '--title', 'Figure Workbench 0.6.2 RC2 · Windows 安装程序',
+                          '--notes-file', str(public / 'RELEASE_NOTES.md'), *map(str, paths)], check=True)
+          releases = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/releases?per_page=100'], text=True))
+          matches = [item for item in releases if item['tag_name'] == tag]
+          assert len(matches) == 1
+          release_id = matches[0]['id']
+          for attempt in range(6):
+              release = json.loads(subprocess.check_output(
+                  ['gh', 'api', f'repos/{repository}/releases/{release_id}'], text=True))
+              assets = release.get('assets', [])
+              if len(assets) == 1 and all(
+                      item.get('state') == 'uploaded'
+                      and isinstance(item.get('digest'), str)
+                      and re.fullmatch(r'sha256:[a-f0-9]{64}', item['digest'])
+                      for item in assets):
+                  break
+              if attempt < 5:
+                  time.sleep(5)
+          release_path, tag_path = output / 'remote-release.json', output / 'remote-tag.json'
+          release_path.write_text(json.dumps(release, indent=2) + '\n', 'utf-8')
+          reference = subprocess.run(['gh', 'api', f'repos/{repository}/git/ref/tags/{tag}'], capture_output=True, text=True)
+          if reference.returncode == 0:
+              reference_data = json.loads(reference.stdout)
+          elif 'HTTP 404' in reference.stderr:
+              reference_data = {'status': 404, 'exists': False, 'repository': repository, 'ref': f'refs/tags/{tag}'}
+          else:
+              raise RuntimeError(reference.stderr)
+          tag_path.write_text(json.dumps(reference_data, indent=2) + '\n', 'utf-8')
+          verify_upload(public, release_path, tag_path, repository=repository, expected_commit=os.environ['GITHUB_SHA'])
+          subprocess.run(['gh', 'release', 'edit', tag, '--repo', repository,
+                          '--draft=false', '--prerelease', '--latest=false'], check=True)
+          published = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/releases/tags/{tag}'], text=True))
+          reference = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/git/ref/tags/{tag}'], text=True))
+          assert not published['draft'] and published['prerelease']
+          assert reference['object']['type'] == 'commit' and reference['object']['sha'] == os.environ['GITHUB_SHA']
+          assert len(published['assets']) == 1
+          asset = published['assets'][0]
+          assert asset['name'] == installer['file'] and asset['size'] == installer['bytes']
+          assert asset['digest'] == 'sha256:' + installer['sha256'] and asset['state'] == 'uploaded'
+          (output / 'published-prerelease.json').write_text(json.dumps(published, ensure_ascii=False, indent=2) + '\n', 'utf-8')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('Windows setup candidate (native application/model acceptance pending): ' + published['html_url'] + '\n')
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Installer upload or publication verification failed.' }
+
+      - name: Remove superseded download clutter after the new installer is verified
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/cleanup_release_downloads.py --repository "$env:GITHUB_REPOSITORY" --new-tag "$env:CANDIDATE_TAG" --expected-commit "$env:GITHUB_SHA" --installer dist/Figure_Workbench_0.6.2_Setup.exe --record .ci-manual-test/download-cleanup.json
+
+      - name: Retain the compiled setup when later validation fails
+        if: ${{ failure() && steps.build_setup.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-installer-candidate-${{ github.sha }}
+          compression-level: 0
+          path: |
+            dist/Figure_Workbench_0.6.2_Setup.exe
+            .ci-manual-test/installer-build.json
+            .ci-manual-test/installer-build.compiler.log
+            .ci-manual-test/installer-smoke.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Retain build records including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-test-build-records-${{ github.sha }}
+          path: |
+            .ci-manual-test/alignment-snap/
+            .ci-manual-test/*.json
+            .ci-manual-test/*.log
+            .ci-manual-test/SHA256SUMS
+            .ci-manual-test/public/*.json
+            .ci-manual-test/public/*.md
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30

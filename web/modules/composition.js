@@ -16,7 +16,6 @@ function requireUngrouped(project) {
 }
 
 export function arrangeComposition(overrides={}) {
-  if(!state.project.panels.length){notify('请先导入并加入图片','info');return;}
   requireUngrouped(state.project);
   mutate(project=>applyPanelLayout(project,overrides),'应用组图布局');
   state.tab='compose';state.compositionInspectorTab='layout';emit();
@@ -43,25 +42,37 @@ export function addAssetsToComposition(assetIds,{layout=true,position=null,unuse
 }
 
 export function resizeComposition(width,height,mode) {
+  if(width===state.project.figure.width_mm&&height===state.project.figure.height_mm)return;
   const behavior=mode || state.project.settings.composition?.resize_mode || 'fit';
   if(behavior==='reflow')requireUngrouped(state.project);
   mutate(project=>resizeFigure(project,width,height,{mode:behavior}),'调整画布并适配版式');
 }
 
-export function applyJournalPreset() {
-  const composition=ensureCompositionSettings(state.project),id=state.compositionPresetDraft || composition.journal_preset_id || 'generic-180',preset=journalPresetById(id);
+export function applyJournalPreset(id=state.compositionPresetDraft || state.project.settings.composition?.journal_preset_id || 'generic-180') {
+  // The select commits its own value. Keep no uncommitted preset outside the
+  // undoable project, including when geometry validation rejects a selection.
+  state.compositionPresetDraft=null;
+  const composition=ensureCompositionSettings(state.project);
+  if(!id){
+    if(composition.journal_preset_id)mutate(project=>{const options=ensureCompositionSettings(project);options.journal_preset_id=null;options.journal_preset_snapshot=null;},'改为自定义画布');
+    return;
+  }
+  const preset=journalPresetById(id);
   if(!preset)throw new Error('请选择可用的尺寸预设。');
-  const mode=composition.resize_mode || 'fit';if(mode==='reflow')requireUngrouped(state.project);
-  const height=preset.height_mm || Math.min(state.project.figure.height_mm,preset.max_height_mm || Infinity);
+  const mode=composition.resize_mode || 'fit',width=preset.width_mm || state.project.figure.width_mm;
+  const height=preset.height_mm || Math.min(state.project.figure.height_mm,preset.max_height_mm || Infinity),sizeChanged=width!==state.project.figure.width_mm||height!==state.project.figure.height_mm;
+  if(id===composition.journal_preset_id&&!sizeChanged)return;
+  if(mode==='reflow')requireUngrouped(state.project);
   mutate(project=>{
     const options=ensureCompositionSettings(project);
     if(preset.label_style)options.numbering.style=preset.label_style;
     if(preset.label_font_size_pt)for(const panel of project.panels)if(panel.label_mode==='auto')panel.label_font_size_pt=preset.label_font_size_pt;
     reconcilePanelLabels(project);
-    resizeFigure(project,preset.width_mm || project.figure.width_mm,height,{mode});
+    // A new preset can enlarge captions without changing the canvas size.
+    // Include that adaptation in this one explicit preset-selection transaction.
+    resizeFigure(project,width,height,{mode});
     const applied=ensureCompositionSettings(project);applied.journal_preset_id=id;applied.journal_preset_snapshot=clone(preset);
   },`应用 ${preset.title} 尺寸预设`);
-  notify('已应用尺寸预设。导出前请检查原图分辨率与期刊要求。');
 }
 
 export function compositionIssues(project) {return journalPreflight(project);}
@@ -81,7 +92,7 @@ export function alignComposition(direction) {
     if(direction==='top')dy=bounds.top-b.top;if(direction==='middle')dy=(bounds.top+bounds.bottom-b.top-b.bottom)/2;if(direction==='bottom')dy=bounds.bottom-b.bottom;
     return {ids:unit.members.map(panel=>panel.id),dx,dy};
   });
-  mutate(project=>{for(const shift of shifts)for(const panel of project.panels)if(shift.ids.includes(panel.id)){panel.x_mm=round(panel.x_mm+shift.dx);panel.y_mm=round(panel.y_mm+shift.dy);}},'对齐选中面板');
+  mutate(project=>{for(const shift of shifts)for(const panel of project.panels)if(shift.ids.includes(panel.id)){panel.x_mm=round(panel.x_mm+shift.dx,6);panel.y_mm=round(panel.y_mm+shift.dy,6);}},'对齐选中面板');
 }
 
 export function distributeComposition(axis) {
@@ -93,7 +104,7 @@ export function distributeComposition(axis) {
   const gap=(maximum-minimum-units.reduce((sum,unit)=>sum+unit.bounds[size],0))/(units.length-1);
   if(gap<-.001)throw new Error('选区没有足够的空隙。请先拉开外侧面板，再执行等间距分布。');
   let cursor=minimum;const shifts=units.map(unit=>{const delta=cursor-unit.bounds[start];cursor+=unit.bounds[size]+Math.max(0,gap);return {ids:unit.members.map(panel=>panel.id),delta};});
-  mutate(project=>{for(const shift of shifts)for(const panel of project.panels)if(shift.ids.includes(panel.id)){const key=horizontal?'x_mm':'y_mm';panel[key]=round(panel[key]+shift.delta);}},'等间距分布面板');
+  mutate(project=>{for(const shift of shifts)for(const panel of project.panels)if(shift.ids.includes(panel.id)){const key=horizontal?'x_mm':'y_mm';panel[key]=round(panel[key]+shift.delta,6);}},'等间距分布面板');
 }
 
 export function groupComposition(remove=false) {
@@ -107,7 +118,7 @@ export function duplicateComposition() {
   const selected=selectedPanels();if(!selected.length)return;
   if(state.project.panels.length+selected.length>1000)throw new Error('面板总数不能超过 1000。');
   const ids=[],groups=new Map();
-  mutate(project=>{for(const panel of selected){const copy={...clone(panel),id:uid('panel'),x_mm:round(panel.x_mm+4),y_mm:round(panel.y_mm+4),label:'',label_mode:'auto'};
+  mutate(project=>{for(const panel of selected){const copy={...clone(panel),id:uid('panel'),x_mm:round(panel.x_mm+4,6),y_mm:round(panel.y_mm+4,6),label:'',label_mode:'auto'};
     if(copy.group_id){if(!groups.has(copy.group_id))groups.set(copy.group_id,uid('group'));copy.group_id=groups.get(copy.group_id);}
     project.panels.push(copy);ids.push(copy.id);
   }},'复制选中面板');
@@ -117,14 +128,25 @@ export function duplicateComposition() {
 export function selectAllComposition() {state.selectedPanelIds=state.project.panels.map(panel=>panel.id);state.selectedPanelId=state.selectedPanelIds.at(-1)||null;state.selectedAnnotationId=null;state.compositionInspectorTab='selection';emit();}
 
 export function changeCompositionOption(element) {
-  if(element.matches('[data-journal-choice]')){state.compositionPresetDraft=element.value;emit();return true;}
+  if(element.matches('[data-journal-choice]')){
+    try {applyJournalPreset(element.value);}
+    catch(error){element.value=state.project.settings.composition?.journal_preset_id || '';throw error;}
+    return true;
+  }
   if(element.matches('[data-layout-option]')){
     const key=element.dataset.layoutOption,value=element.tagName==='SELECT'?element.value:Number(element.value);
-    if(typeof value==='number'&&(!Number.isFinite(value)||element.value===''||value<0||value>1000||(['columns','rows'].includes(key)&&!Number.isInteger(value))))throw new Error('布局参数必须是有效的非负数，行列数应为整数（0 表示自动）。');
-    mutate(project=>{ensureCompositionSettings(project).layout[key]=value;},'设置网格参数');return true;
+    const current=layoutOptions(state.project);
+    try {
+      if(!Object.hasOwn(current,key))throw new Error('未知的布局参数。');
+      if(typeof value==='number'&&(!Number.isFinite(value)||element.value.trim()===''||value<0||value>1000||(['columns','rows'].includes(key)&&!Number.isInteger(value))))throw new Error('布局参数必须是有效的非负数，行列数应为整数（0 表示自动）。');
+      if(value===current[key])return true;
+      requireUngrouped(state.project);
+      mutate(project=>applyPanelLayout(project,{[key]:value}),'调整布局参数');
+    } catch(error){element.value=String(current[key] ?? '');throw error;}
+    return true;
   }
-  if(element.matches('[data-numbering-option]')){const key=element.dataset.numberingOption,value=element.type==='checkbox'?element.checked:element.value;mutate(project=>{ensureCompositionSettings(project).numbering[key]=value;},'设置自动编号');return true;}
-  if(element.matches('[data-figure-option]')){const key=element.dataset.figureOption,value=element.type==='checkbox'?element.checked:element.value;mutate(project=>{ensureCompositionSettings(project)[key]=value;},'设置组图行为');return true;}
+  if(element.matches('[data-numbering-option]')){const key=element.dataset.numberingOption,value=element.type==='checkbox'?element.checked:element.value;if(ensureCompositionSettings(state.project).numbering[key]!==value)mutate(project=>{ensureCompositionSettings(project).numbering[key]=value;},'设置自动编号');return true;}
+  if(element.matches('[data-figure-option]')){const key=element.dataset.figureOption,value=element.type==='checkbox'?element.checked:element.value;if(ensureCompositionSettings(state.project)[key]!==value)mutate(project=>{ensureCompositionSettings(project)[key]=value;},'设置组图行为');return true;}
   if(element.matches('[data-label-mode]')){const panel=selectedPanel();if(panel)mutate(project=>{const item=project.panels.find(entry=>entry.id===panel.id);item.label_mode=element.value;if(element.value!=='manual')item.label='';},'设置面板编号方式');return true;}
   return false;
 }
@@ -133,7 +155,7 @@ export const compositionActions={
   'composition-inspector':element=>{state.compositionInspectorTab=element.dataset.view;emit();},
   'apply-layout':()=>arrangeComposition(),
   'layout-preset':element=>arrangeComposition({preset:element.dataset.layout || 'grid',columns:Number(element.dataset.columns)||0,rows:Number(element.dataset.rows)||0}),
-  'apply-journal-preset':applyJournalPreset,
+  'apply-journal-preset':()=>applyJournalPreset(),
   'compose-all-assets':()=>addAssetsToComposition(state.project.assets.map(asset=>asset.id),{unusedOnly:true}),
   'select-all-panels':selectAllComposition,
   'group-panels':()=>groupComposition(),
@@ -146,14 +168,14 @@ export const compositionActions={
 
 const option=(value,title,current)=>`<option value="${e(value)}" ${value===current?'selected':''}>${e(title)}</option>`;
 const section=(title,html)=>`<section class="inspector-section composition-section"><div class="inspector-heading"><h3>${title}</h3></div>${html}</section>`;
-const numeric=(label,key,value,unit='mm')=>`<label class="field"><span>${label}</span><div class="input-with-unit"><input id="layout-${key}" type="number" min="0" max="1000" step="${unit==='mm'?'.5':'1'}" data-layout-option="${key}" value="${value}" aria-label="${label}"><small>${unit}</small></div></label>`;
+const numeric=(label,key,value,unit='mm')=>`<label class="field"><span>${label}</span><div class="input-with-unit"><input id="layout-${key}" type="number" min="0" max="1000" step="${unit==='mm'?'any':'1'}" data-layout-option="${key}" value="${value}" aria-label="${label}" required><small>${unit}</small></div></label>`;
 
 export function renderCompositionControls(project) {
   const composition=ensureCompositionSettings(project),layout=layoutOptions(project),numbering=composition.numbering;
-  const chosen=state.compositionPresetDraft || composition.journal_preset_id || 'generic-180',preset=journalPresetById(chosen);
+  const chosen=composition.journal_preset_id || '',preset=journalPresetById(chosen);
   const notes=(preset?.notes || []).slice(0,2).map(note=>`<p class="microcopy">${e(note)}</p>`).join('');
-  return section('期刊与尺寸预设',`<label class="field"><span>投稿目标</span><select id="journal-preset" data-journal-choice>${JOURNAL_PRESETS.map(item=>option(item.id,item.title,chosen)).join('')}</select></label>${notes}${preset?.source_url?`<a class="composition-source" href="${e(preset.source_url)}" target="_blank" rel="noopener noreferrer">查看规范来源 · ${e(preset.checked_at || '')}</a>`:''}<button class="button full" data-action="apply-journal-preset">应用预设并适配版式</button><label class="field"><span>改变画布时</span><select id="composition-resize-mode" data-figure-option="resize_mode">${[['fit','等比适配，保留布局'],['reflow','按网格重新排版'],['canvas','只改画布，检查越界']].map(([value,title])=>option(value,title,composition.resize_mode || 'fit')).join('')}</select></label>`)
-    +section('自动布局',`<div class="layout-presets">${[[2,2],[3,2],[2,3],[3,3]].map(([cols,rows])=>`<button class="button small" data-action="layout-preset" data-columns="${cols}" data-rows="${rows}" title="${cols} 列 × ${rows} 行">${cols} 列 × ${rows} 行</button>`).join('')}</div><label class="field"><span>布局方式</span><select id="layout-preset" data-layout-option="preset">${[['grid','规则网格'],['hero-left','左侧大图 + 右侧小图'],['hero-top','上方大图 + 下方小图']].map(([value,title])=>option(value,title,layout.preset)).join('')}</select></label><div class="field-grid">${numeric('列数（0 自动）','columns',layout.columns,'列')}${numeric('行数（0 自动）','rows',layout.rows,'行')}${numeric('水平间距','gap_x_mm',layout.gap_x_mm)}${numeric('垂直间距','gap_y_mm',layout.gap_y_mm)}${numeric('边距','margin_mm',layout.margin_mm)}</div><button class="button full primary" data-action="apply-layout">应用布局</button><label class="checkbox-label"><input type="checkbox" data-figure-option="auto_import" ${composition.auto_import!==false?'checked':''}>拖入画布后自动排版</label><p class="microcopy">保持原图比例；不裁掉内容。空间不足会提示调整参数。</p>`)
+  return section('期刊与尺寸预设',`<label class="field"><span>投稿目标</span><select id="journal-preset" data-journal-choice>${option('','自定义画布',chosen)}${JOURNAL_PRESETS.map(item=>option(item.id,item.title,chosen)).join('')}</select></label>${notes}${preset?.source_url?`<a class="composition-source" href="${e(preset.source_url)}" target="_blank" rel="noopener noreferrer">查看规范来源 · ${e(preset.checked_at || '')}</a>`:''}<label class="field"><span>改变画布时</span><select id="composition-resize-mode" data-figure-option="resize_mode">${[['fit','等比适配，保留布局'],['reflow','按网格重新排版'],['canvas','只改画布，检查越界']].map(([value,title])=>option(value,title,composition.resize_mode || 'fit')).join('')}</select></label>`)
+    +section('自动布局',`<div class="layout-presets">${[[2,2],[3,2],[2,3],[3,3]].map(([cols,rows])=>`<button class="button small" data-action="layout-preset" data-columns="${cols}" data-rows="${rows}" title="${cols} 列 × ${rows} 行">${cols} 列 × ${rows} 行</button>`).join('')}</div><label class="field"><span>布局方式</span><select id="layout-preset" data-layout-option="preset">${[['grid','规则网格'],['hero-left','左侧大图 + 右侧小图'],['hero-top','上方大图 + 下方小图']].map(([value,title])=>option(value,title,layout.preset)).join('')}</select></label><div class="field-grid">${numeric('列数（0 自动）','columns',layout.columns,'列')}${numeric('行数（0 自动）','rows',layout.rows,'行')}${numeric('水平间距','gap_x_mm',layout.gap_x_mm)}${numeric('垂直间距','gap_y_mm',layout.gap_y_mm)}${numeric('边距','margin_mm',layout.margin_mm)}</div><label class="checkbox-label"><input type="checkbox" data-figure-option="auto_import" ${composition.auto_import!==false?'checked':''}>拖入画布后自动排版</label><p class="microcopy">参数修改后自动生效。保持原图比例与完整内容；同列编号对齐，同行基线一致。已有图稿可点击「自动排版」重新对齐。空间不足会提示调整参数。</p>`)
     +section('自动编号',`<div class="field-grid"><label class="field"><span>编号样式</span><select id="numbering-style" data-numbering-option="style">${[['upper','A, B, … AA'],['lower','a, b, … aa'],['numeric','1, 2, 3']].map(([value,title])=>option(value,title,numbering.style)).join('')}</select></label><label class="field"><span>编号顺序</span><select id="numbering-order" data-numbering-option="order">${[['visual','从上到下、从左到右'],['source','面板加入顺序']].map(([value,title])=>option(value,title,numbering.order)).join('')}</select></label></div><label class="checkbox-label"><input type="checkbox" data-numbering-option="enabled" ${numbering.enabled?'checked':''}>显示自动编号</label><p class="microcopy">手工编号会锁定保留；自动编号跳过已占用值，支持超过 26 张图。</p><button class="button small full" data-action="renumber-all" title="将手工编号也改为自动编号">全部改为自动编号（覆盖手填）</button>`);
 }
 

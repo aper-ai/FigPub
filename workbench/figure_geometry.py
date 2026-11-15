@@ -90,6 +90,15 @@ def text_bounds(text, x, baseline, font_size_pt, *, bold=False, anchor='start'):
     return union_bounds(*rectangles) if rectangles else (x, baseline, 0., 0.)
 
 
+def panel_label_position(panel):
+    """Return the upright label's x/baseline in mm, matching both web studios."""
+    anchor = panel.get('label_anchor') or {}
+    x = _number(panel.get('x_mm')) + _number(panel.get('width_mm')) * _number(anchor.get('x_ratio'))
+    baseline = (_number(panel.get('y_mm')) + _number(panel.get('height_mm')) *
+                _number(anchor.get('y_ratio')) - 1.8)
+    return x, baseline
+
+
 def panel_display_bounds(panel):
     """Separate bounds for rotated source content and upright panel captions."""
     x, y, width, height = (_number(panel.get(key)) for key in
@@ -100,7 +109,8 @@ def panel_display_bounds(panel):
     bounds = {'image': _rotated_bounds(x, y, width, height, rotation)}
     label = '' if panel.get('label_mode') == 'none' else str(panel.get('label') or '')
     if label:
-        bounds['label'] = text_bounds(label, x, y - 1.8,
+        label_x, label_baseline = panel_label_position(panel)
+        bounds['label'] = text_bounds(label, label_x, label_baseline,
                                       _number(panel.get('label_font_size_pt'), 10), bold=True)
     title = str(panel.get('title') or '')
     if title:

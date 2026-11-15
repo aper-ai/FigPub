@@ -190,9 +190,9 @@ def main():
 
             page.locator('.asset-row').first.click()
             page.locator('#object-form [name="label"]').fill('Target')
-            page.locator('#object-form button[type="submit"]').click(); idle()
+            page.locator('#object-form [name="label"]').press('Tab'); idle()
             assert labels()[0] == 'Target'
-            page.locator('#layout-preset').select_option('hero-left'); page.locator('#layout-form button[type="submit"]').click(); idle()
+            page.locator('#layout-preset').select_option('hero-left'); idle()
             assert labels()[0] == 'Target'
             _, hero_project = save_project('hero.figwork')
             assert hero_project['panels'][0]['width_mm'] > hero_project['panels'][1]['width_mm']
@@ -220,7 +220,7 @@ def main():
             old_width = float(page.locator('#object-form [name="width_mm"]').input_value())
             old_height = float(page.locator('#object-form [name="height_mm"]').input_value())
             page.locator('#object-form [name="width_mm"]').fill(str(old_width * .9))
-            page.locator('#object-form button[type="submit"]').click(); idle()
+            page.locator('#object-form [name="width_mm"]').press('Tab'); idle()
             assert abs(float(page.locator('#object-form [name="height_mm"]').input_value()) / old_height - .9) < .001
             click('undo')
             # A pending save must capture committed geometry, never this cancelled live drag.
@@ -230,12 +230,14 @@ def main():
             page.mouse.move(box['x'] + box['width'] / 2 + 35, box['y'] + box['height'] / 2 + 15, steps=5)
             page.wait_for_timeout(1100); page.keyboard.press('Escape'); page.mouse.up()
             assert page.locator('#studio-svg > [data-object]').first.get_attribute('transform') == before_cancel
-            saved(); page.reload(wait_until='load'); idle()
+            saved(); page.reload(wait_until='load'); idle(); count(0)
+            expect(page.locator('#workspace-recovery-dialog')).to_be_visible()
+            click('restore'); count(6)
             assert page.locator('#studio-svg > [data-object]').first.get_attribute('transform') == before_cancel
             checked('group drag/resize, atomic undo, grouped-layout refusal and cancelled-gesture autosave isolation')
 
             page.locator('#journal-preset').select_option('nature-single')
-            page.locator('#canvas-form button[type="submit"]').click(); idle()
+            idle()
             assert page.locator('#canvas-width').input_value() == '89'
             assert labels() == list('abcdef')
             _, resized = save_project('nature.figwork')
@@ -246,7 +248,7 @@ def main():
             assert page.locator('#object-form').evaluate('(form)=>form.checkValidity()'), 'Fractional fitted dimensions must remain editable'
             checked('Nature physical width, lowercase 8pt numbering, fitted geometry and valid fractional fields')
 
-            page.locator('#layout-form [name="rows"]').fill('0'); page.locator('#layout-form button[type="submit"]').click(); idle()
+            page.locator('#layout-form [name="rows"]').fill('0'); page.locator('#layout-form [name="rows"]').press('Tab'); idle()
             page.locator('#image-files').set_input_files(safe_svg); idle(); count(7)
             click('undo'); count(6)
             page.locator('#image-files').set_input_files([files[0], unsafe_svg]); idle(); count(6)
@@ -255,9 +257,11 @@ def main():
 
             click('text')
             page.locator('#object-form [name="text"]').fill('中文图稿\nProtein expression')
+            page.locator('#object-form [name="text"]').press('Tab')
             for name, value in [('x_mm', 14), ('y_mm', 106), ('width_mm', 60), ('height_mm', 7), ('font_size_pt', 6)]:
                 page.locator(f'#object-form [name="{name}"]').fill(str(value))
-            page.locator('#object-form button[type="submit"]').click(); idle()
+                page.locator(f'#object-form [name="{name}"]').press('Tab')
+            idle()
             saved(); page.screenshot(path=str(output / '02-nature.png'), full_page=True)
             project_path, document = save_project()
             assert len(document['annotations']) == 1 and '\n' in document['annotations'][0]['text']
@@ -281,14 +285,16 @@ def main():
                 report['raster_validation']['pdf_matches_png'] = True
             checked('Chinese multiline labels, embedded-font SVG, physical PNG and lossless raster PDF downloads')
 
-            saved(); page.reload(wait_until='load'); idle(); count(6)
+            saved(); page.reload(wait_until='load'); idle(); count(0)
+            expect(page.locator('#workspace-recovery-dialog')).to_be_visible()
+            click('restore'); count(6)
             assert page.locator('#studio-svg > [data-object]').count() == 7
             page.locator('#project-file').set_input_files(project_path); idle(); count(6)
             _, reopened = save_project('reopened.figwork')
             assert reopened['panels'] == document['panels']
             assert reopened['annotations'] == document['annotations']
             assert [asset['id'] for asset in reopened['assets']] == [asset['id'] for asset in document['assets']]
-            checked('IndexedDB reload and complete downloaded .figwork reopen preserve originals and layout')
+            checked('IndexedDB explicit recovery and complete downloaded .figwork reopen preserve originals and layout')
 
             with ZipFile(project_path) as archive:
                 members = {name: archive.read(name) for name in archive.namelist()}
@@ -330,7 +336,8 @@ def main():
 
             page.remove_listener('dialog', accept_dialog)
             page.on('dialog', dismiss_replacement)
-            click('new'); click('demo')
+            assert page.locator('[data-action="demo"]').count() == 0
+            click('new'); click('clear')
             page.locator('#project-file').set_input_files(project_path); idle(); count(0)
             assert len(dismissed) == 3
             assert page.locator('#studio-svg > [data-object]').count() == 1
@@ -338,7 +345,74 @@ def main():
             page.on('dialog', accept_dialog)
             _, after_cancel = save_project('annotation-after-cancel.figwork')
             assert after_cancel['annotations'] == annotation_only['annotations']
-            checked('annotation-only projects survive cancelled new, demo and open actions')
+            checked('annotation-only projects survive cancelled new, clear and open actions')
+            # A transaction failure must keep both the current project and stored
+            # originals, and expose an error instead of claiming successful cleanup.
+            saved()
+            page.evaluate("""()=>{window.fixtureClear=IDBObjectStore.prototype.clear;IDBObjectStore.prototype.clear=function(){if(this.name==='originals')throw new DOMException('Synthetic cleanup denial','SecurityError');return window.fixtureClear.call(this);};}""")
+            click('clear'); count(0)
+            assert 'Synthetic cleanup denial' in page.locator('#messages').inner_text()
+            assert page.locator('#studio-svg > [data-object]').count() == 1
+            stored_after_failure=page.evaluate("""()=>new Promise((resolve,reject)=>{const request=indexedDB.open('figure-workbench-browser-studio-v1',1);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['workspace','originals'],'readonly'),active=tx.objectStore('workspace').get('active'),originals=tx.objectStore('originals').count();tx.oncomplete=()=>{resolve({project:active.result,count:originals.result});db.close();};tx.onerror=()=>reject(tx.error);};request.onerror=()=>reject(request.error);})""")
+            assert len(stored_after_failure['project']['annotations']) == 1
+            assert stored_after_failure['count'] > 0
+            page.evaluate('()=>{IDBObjectStore.prototype.clear=window.fixtureClear;delete window.fixtureClear;}')
+            checked('failed cleanup aborts the entire IndexedDB transaction and remains visible')
+            click('clear'); count(0)
+            assert page.locator('#studio-svg > [data-object]').count() == 0
+            assert page.locator('[data-action="undo"]').is_disabled()
+            page.wait_for_timeout(900)
+            page.reload(wait_until='load'); idle(); count(0)
+            assert not page.locator('#workspace-recovery-dialog').is_visible()
+            remaining=page.evaluate("""()=>new Promise((resolve,reject)=>{const request=indexedDB.open('figure-workbench-browser-studio-v1',1);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['workspace','originals'],'readonly'),active=tx.objectStore('workspace').get('active'),originals=tx.objectStore('originals').count();tx.oncomplete=()=>{resolve({workspace:active.result?1:0,originals:originals.result});db.close();};tx.onerror=()=>reject(tx.error);};request.onerror=()=>reject(request.error);})""")
+            assert remaining == {'workspace':0,'originals':0}
+            checked('confirmed cleanup removes stored copies, undo history and recovery across reload')
+            # Both pages share the same real IndexedDB database. A generation
+            # check in the write transaction must reject stale autosaves, even
+            # when the other page still has all old image bytes in memory.
+            page.locator('#image-files').set_input_files(files[:1]);idle();count(1);saved()
+            other=context.new_page();other.on('dialog',accept_dialog)
+            other.on('pageerror',lambda error:report['browser_errors'].append(str(error)))
+            other.goto(html.as_uri(),wait_until='load')
+            other.locator('body:not(.busy)').wait_for(state='attached')
+            expect(other.locator('#panel-count')).to_have_text('0')
+            expect(other.locator('#workspace-recovery-dialog')).to_be_visible()
+            other.locator('[data-action="restore"]').click()
+            other.locator('body:not(.busy)').wait_for(state='attached')
+            expect(other.locator('#panel-count')).to_have_text('1')
+            click('clear');count(0)
+            other.locator('#project-title').fill('Unsaved synthetic work in second tab')
+            other.locator('#project-title').press('Tab')
+            expect(other.locator('#save-status')).to_contain_text('自动保存失败',timeout=20000)
+            assert '其他窗口清理或替换' in other.locator('#messages').inner_text()
+            expect(other.locator('#panel-count')).to_have_text('1')
+            still_empty=page.evaluate("""()=>new Promise((resolve,reject)=>{const request=indexedDB.open('figure-workbench-browser-studio-v1',1);request.onsuccess=()=>{const db=request.result,tx=db.transaction(['workspace','originals'],'readonly'),active=tx.objectStore('workspace').get('active'),originals=tx.objectStore('originals').count(),epoch=tx.objectStore('workspace').get('workspace-epoch');tx.oncomplete=()=>{resolve({active:!!active.result,originals:originals.result,epoch:epoch.result});db.close();};tx.onerror=()=>reject(tx.error);};request.onerror=()=>reject(request.error);})""")
+            assert not still_empty['active'] and still_empty['originals']==0
+            assert isinstance(still_empty['epoch'],int) and still_empty['epoch']>0
+            # A rejected stale save must not discard the user's unsaved in-memory
+            # work: downloading an independent project remains available.
+            with other.expect_download() as retained_download:
+                other.locator('[data-action="save"]').click()
+            retained_path=output/'second-tab-retained.figwork'
+            retained_download.value.save_as(retained_path)
+            with ZipFile(retained_path) as retained_archive:
+                retained_project=json.loads(retained_archive.read('project.json'))
+                assert retained_project['title']=='Unsaved synthetic work in second tab'
+                assert len(retained_project['assets'])==1
+            other.locator('body:not(.busy)').wait_for(state='attached')
+            other.locator('[data-action="new"]').first.click()
+            other.locator('body:not(.busy)').wait_for(state='attached')
+            expect(other.locator('#panel-count')).to_have_text('0')
+            other.locator('#image-files').set_input_files(files[:1])
+            other.locator('body:not(.busy)').wait_for(state='attached')
+            expect(other.locator('#save-status')).to_contain_text('已自动保存',timeout=20000)
+            other.locator('[data-action="clear"]').first.click()
+            other.locator('body:not(.busy)').wait_for(state='attached')
+            other.close();page.reload(wait_until='load');idle();count(0)
+            assert not page.locator('#workspace-recovery-dialog').is_visible()
+            checked('cross-tab clear rejects stale autosave without discarding manual backup or explicit new workflow')
+
+
             assert not report['network_attempts'], report['network_attempts']
             assert not report['browser_errors'], report['browser_errors']
             assert hashlib.sha256(html.read_bytes()).hexdigest() == report['html_sha256'], 'Tested HTML changed during acceptance'

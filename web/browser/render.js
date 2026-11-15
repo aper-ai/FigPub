@@ -2,7 +2,7 @@ import {escapeXml as e, selectedObjects, selectionBounds} from './model.js';
 import {bytesDataUrl, imageFromUrl} from './sources.js';
 import {LIMITS} from './archive.js';
 import {pngWithDensity, encodeRasterPdf} from './encoding.js';
-import {textLines} from '../modules/layout-engine.js';
+import {panelLabelPosition,textLines} from '../modules/layout-engine.js';
 
 const MM_PER_PT = 25.4 / 72;
 const isCjk = text => /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}\u3000-\u303f\uff00-\uffef]/u.test(text);
@@ -52,7 +52,8 @@ export function figureMarkup(project, sources, {embedded = false, editor = false
     const source = sources.get(panel.asset_id), crop = panel.crop, asset = project.assets.find(item => item.id === panel.asset_id), width = panel.width_mm, height = panel.height_mm;
     const url = source ? embedded ? bytesDataUrl(source.bytes, source.mime) : source.url : '', sx = width / crop.width, sy = height / crop.height, clip = `clip-${panel.id}`;
     const image = `<defs><clipPath id="${clip}"><rect width="${width}" height="${height}"/></clipPath></defs><g transform="rotate(${panel.rotation || 0} ${width / 2} ${height / 2})"><g transform="translate(${width / 2} ${height / 2}) scale(${panel.flip_h ? -1 : 1} ${panel.flip_v ? -1 : 1}) translate(${-width / 2} ${-height / 2})" clip-path="url(#${clip})"><image href="${e(url)}" x="${-crop.x * sx}" y="${-crop.y * sy}" width="${asset.width_px * sx}" height="${asset.height_px * sy}" preserveAspectRatio="none"/></g>${scaleBar(panel)}</g>`;
-    const captions = svgText(panel.label, {x: 0, y: -1.8, size: (panel.label_font_size_pt || 10) * MM_PER_PT, bold: true}) + svgText(panel.title, {x: width / 2, y: -1.8, size: (panel.title_font_size_pt || 8) * MM_PER_PT, anchor: 'middle'});
+    const labelPosition=panelLabelPosition(panel,{relative:true});
+    const captions = svgText(panel.label_mode==='none'?'':panel.label, {x: labelPosition.x_mm, y: labelPosition.y_mm, size: (panel.label_font_size_pt || 10) * MM_PER_PT, bold: true}) + svgText(panel.title, {x: width / 2, y: -1.8, size: (panel.title_font_size_pt || 8) * MM_PER_PT, anchor: 'middle'});
     const selected = editor && selection.has(panel.id) ? `<rect class="selection-outline" x="-.4" y="-.4" width="${width + .8}" height="${height + .8}" fill="none" stroke="#087b60" stroke-width=".45" pointer-events="none"/>${selection.size === 1 ? `<rect data-resize="${e(panel.id)}" x="${width - 1.2}" y="${height - 1.2}" width="2.4" height="2.4" fill="white" stroke="#087b60" stroke-width=".35"/>` : ''}` : '';
     return `<g ${editor ? `data-object="${e(panel.id)}" tabindex="0" role="img" aria-label="面板 ${e(panel.label)} ${e(asset.name)}"` : ''} transform="translate(${panel.x_mm} ${panel.y_mm})">${image}${captions}${selected}</g>`;
   }).join('');
@@ -90,7 +91,8 @@ export async function rasterCanvas(project, sources, dpi) {
       if (length > 0 && length <= w * .9) { context.strokeStyle = bar.color; context.fillStyle = bar.color; context.lineWidth = .529167; context.beginPath(); context.moveTo(w / 2 - length - margin, h / 2 - margin); context.lineTo(w / 2 - margin, h / 2 - margin); context.stroke(); context.font = '2.293057px "FW Studio Sans"'; context.textAlign = 'center'; context.fillText(`${bar.length_um} µm`, w / 2 - length / 2 - margin, h / 2 - margin - 1.5); }
     }
     context.restore(); context.textAlign = 'left'; context.fillStyle = '#202923'; const labelSize = (panel.label_font_size_pt || 10) * MM_PER_PT, titleSize = (panel.title_font_size_pt || 8) * MM_PER_PT;
-    context.font = `700 ${labelSize}px "${family(panel.label, true)}"`; fillMultiline(context, panel.label, panel.x_mm, panel.y_mm - 1.8, labelSize);
+    const labelPosition=panelLabelPosition(panel);
+    context.font = `700 ${labelSize}px "${family(panel.label, true)}"`; fillMultiline(context, panel.label_mode==='none'?'':panel.label, labelPosition.x_mm, labelPosition.y_mm, labelSize);
     context.font = `${titleSize}px "${family(panel.title)}"`; context.textAlign = 'center'; fillMultiline(context, panel.title, panel.x_mm + w / 2, panel.y_mm - 1.8, titleSize);
   }
   for (const item of project.annotations.filter(item => !item.hidden)) {

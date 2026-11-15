@@ -20,6 +20,8 @@ import io
 import re
 import struct
 
+from runtime_payload import is_application_source
+
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
 from packaging.specifiers import SpecifierSet
@@ -162,6 +164,8 @@ def copy_source(app: Path) -> int:
         if not path.is_file() or path.is_symlink():
             continue
         relative = path.relative_to(PROJECT_ROOT)
+        if not is_application_source(relative.as_posix()):
+            continue
         if any(part in EXCLUDED_DIRS for part in relative.parts) or path.suffix in {'.pyc', '.exe'}:
             continue
         if len(relative.parts) == 1 and relative.name not in SOURCE_FILES:

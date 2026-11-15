@@ -12,6 +12,7 @@ function errorMessage(detail, status) {
     });
     return `请检查输入：${fields.join('；')}`;
   }
+  if(detail&&typeof detail==='object'&&typeof detail.message==='string')return detail.message.slice(0,2000);
   if (typeof detail === 'string' && detail.trim() && !/^\s*</.test(detail)) return detail.slice(0, 2000);
   if (status === 413) return '文件超过允许的大小，请减少本次导入的文件数量或大小。';
   if (status === 409) return '项目已被另一项操作更新。请先备份当前项目，再重新打开工作区。';
@@ -39,7 +40,7 @@ async function readPayload(response) {
 }
 
 export async function request(path, {method = 'GET', body, signal} = {}) {
-  const options = {method, signal, credentials: 'same-origin'};
+  const options = {method, signal, credentials: 'same-origin', cache: 'no-store'};
   if (body !== undefined) {
     if (body instanceof FormData) options.body = body;
     else { options.body = JSON.stringify(body); options.headers = {'Content-Type': 'application/json'}; }
@@ -60,7 +61,7 @@ export async function importAssets(files) {
 }
 export async function localizationPixels(assetId,signal,source=null) {
   const query=new URLSearchParams({max_size:1024});if(source)for(const key of ['series','frame','channel'])query.set(key,String(source[key] || 0));
-  const response=await fetchLocal(`/api/assets/${encodeURIComponent(assetId)}/pixels.bin?${query}`,{signal,credentials:'same-origin'});
+  const response=await fetchLocal(`/api/assets/${encodeURIComponent(assetId)}/pixels.bin?${query}`,{signal,credentials:'same-origin',cache:'no-store'});
   if(!response.ok){const payload=await readPayload(response),detail=payload?.detail??payload?.message??payload;throw new ApiError(errorMessage(detail,response.status),response.status,detail);}
   const buffer=await response.arrayBuffer(),read=name=>Number(response.headers.get(name));
   const width=read('X-Image-Width'),height=read('X-Image-Height');

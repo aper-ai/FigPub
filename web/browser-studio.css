@@ -688,3 +688,9 @@ dialog>p { font-size:13px; }
   .studio-toolbar>div { flex-wrap:wrap; }
   .header-actions { gap:5px; }
 }
+
+.workspace-choices{display:grid;gap:10px;margin-top:20px}
+
+.auto-apply-note{margin:0;padding:10px 16px 0;font-size:12px;color:var(--muted,#68788b)}
+.parameter-feedback{font-size:12px;line-height:1.6;margin:8px 0 0}
+.properties [aria-invalid="true"]{border-color:#a53a37}

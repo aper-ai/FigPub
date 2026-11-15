@@ -44,6 +44,7 @@ export function renderAnalysis() {
 }
 
 let tableRequest=0,tableAbort=null,cellposeRequest=null;
+export function clearTableWorkspace() {tableRequest++;tableAbort?.abort();tableAbort=null;}
 export async function loadTable() {
   const asset=selectedAsset();if(!asset||asset.kind!=='table')return;
   const id=asset.id,token=++tableRequest,canonical=state.tab==='analysis'&&state.analysisKind==='qpcr',requestedSheet=canonical?qpcrParameters(state.project,id).sheet:null;tableAbort?.abort();tableAbort=new AbortController();

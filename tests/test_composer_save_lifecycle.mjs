@@ -93,6 +93,61 @@ test('desktop layout fields preserve full geometry on unchanged change and accep
   assert.deepEqual(errors,[]);
 });
 
+for(const compositionKey of [{isComposing:true},{keyCode:229}])test(`desktop IME confirmation preserves the title draft and focus (${compositionKey.isComposing?'isComposing':'keyCode 229'})`,async t=>{
+  const {window,app,errors,until}=await fixture(t);
+  app.state.project.panels[0].title='Original';app.emit();
+  const input=window.document.querySelector('[data-scope="panel"][data-field="title"]');
+  input.focus();
+  input.dispatchEvent(new window.CompositionEvent('compositionstart',{bubbles:true}));
+  input.value='中文标题';
+  input.dispatchEvent(new window.InputEvent('input',{bubbles:true,isComposing:true,inputType:'insertCompositionText',data:'中文标题'}));
+  const confirmation=new window.KeyboardEvent('keydown',{bubbles:true,cancelable:true,key:'Enter',code:'Enter',...compositionKey});
+  input.dispatchEvent(confirmation);
+  assert.equal(confirmation.defaultPrevented,false,'the input method owns candidate confirmation');
+  assert.equal(window.document.activeElement,input,'candidate confirmation must retain input focus');
+  assert.equal(app.state.project.panels[0].title,'Original','an active IME draft must not be committed');
+  assert.equal(app.state.history.length,0);
+
+  input.dispatchEvent(new window.CompositionEvent('compositionend',{bubbles:true,data:'中文标题'}));
+  input.dispatchEvent(new window.InputEvent('input',{bubbles:true,isComposing:false,inputType:'insertText',data:'中文标题'}));
+  input.dispatchEvent(new window.KeyboardEvent('keydown',{bubbles:true,cancelable:true,key:'Enter',code:'Enter'}));
+  await until(()=>!app.state.formCommitPending,'completed title edit committed');
+  assert.equal(app.state.project.panels[0].title,'中文标题','normal Enter applies the completed input without an Apply button');
+  assert.equal(app.state.history.length,1,'the complete title remains one undoable edit');
+  assert.notEqual(window.document.activeElement,input);
+  assert.deepEqual(errors,[]);
+});
+
+for(const mode of ['click','drag','cancel'])test(`a pending inspector edit stays with its original panel before a canvas ${mode}`,async t=>{
+  const {window,app,errors,until,pointer}=await fixture(t);
+  // Isolate inspector ownership from zoom-dependent snapping, tested separately.
+  app.state.snap=false;
+  app.state.project.panels.push({...structuredClone(app.state.project.panels[0]),id:'second',x_mm:60,label:'B'});
+  app.emit();
+  const input=window.document.getElementById('panel-x_mm');
+  input.focus();input.value='13';
+  input.dispatchEvent(new window.InputEvent('input',{bubbles:true,inputType:'insertText',data:'13'}));
+  assert.equal(app.state.project.panels[0].x_mm,10,'the active inspector still has a pending edit');
+  const svg=window.document.getElementById('figure-svg'),target=svg.querySelector('[data-panel-id="second"] .panel-hit');
+  pointer(target,'pointerdown',65,25);
+  assert.equal(app.state.project.panels[0].x_mm,13,'commit must occur before selection changes');
+  assert.equal(app.state.project.panels[1].x_mm,60,'the old inspector cannot mutate the new selection');
+  assert.notEqual(window.document.activeElement,input,'the old inspector must release its input draft');
+  assert.equal(app.state.history.length,1,'the inspector edit is one undoable transaction');
+  const moved=mode!=='click';
+  if(moved){pointer(svg,'pointermove',73,30);await until(()=>app.state.project.panels[1].x_mm!==60,'second panel moved');}
+  pointer(svg,mode==='cancel'?'pointercancel':'pointerup',moved?73:65,moved?30:25);
+  await until(()=>!app.state.interactionLock&&!app.state.formPointerPending&&!app.state.formCommitPending,'canvas transaction settled');
+  assert.equal(app.state.project.panels[0].x_mm,13);
+  assert.equal(app.state.project.panels[1].x_mm,mode==='drag'?68:60);
+  assert.equal(app.state.history.length,mode==='drag'?2:1,'click/cancel must not add a gesture undo step');
+  const button=window.document.querySelector('[data-action="undo"]');button.click();
+  await until(()=>app.state.history.length===(mode==='drag'?1:0),'first undo settled');
+  assert.equal(app.state.project.panels[1].x_mm,60);
+  assert.equal(app.state.project.panels[0].x_mm,mode==='drag'?13:10);
+  assert.deepEqual(errors,[]);
+});
+
 for(const mode of ['move','resize','cancel'])test(`a prior save response arriving during ${mode} preserves the active SVG and edit transaction`,async t=>{
   const {window,app,saves,errors,captures,until,pointer}=await fixture(t);
   const geometry=()=>JSON.parse(JSON.stringify(app.state.project.panels.map(panel=>({x:panel.x_mm,y:panel.y_mm,w:panel.width_mm,h:panel.height_mm}))));
