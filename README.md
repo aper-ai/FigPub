@@ -1,8 +1,8 @@
-# 图研 · Figure Workbench
+# FigPub · 科研图像分析与论文图稿制作
 
 **面向科研人员的一站式图像分析与论文图稿制作平台**
 
-Figure Workbench 面向生命科学研究，将 Western blot 定量、qPCR 分析、多通道显微图像处理、细胞分割与科研组图整合到同一本地工作环境。项目以原始数据、分析参数和结果来源为核心，支持从数据导入、定量分析、人工复核到图稿导出与工程归档的完整流程。
+FigPub（原 Figure Workbench）面向生命科学研究，将 Western blot 定量、qPCR 分析、多通道显微图像处理、细胞分割与科研组图整合到同一本地工作环境。项目以原始数据、分析参数和结果来源为核心，支持从数据导入、定量分析、人工复核到图稿导出与工程归档的完整流程。
 
 主维护仓库：[aper-ai/figure-workbench](https://github.com/aper-ai/figure-workbench) · 候选版本：**0.6.2 RC2** · 已发布版本：**0.6.1** · 许可证：[AGPL-3.0](LICENSE)
 
@@ -71,6 +71,8 @@ Cellpose 使用完整包中的 CPU 环境和预训练权重执行细胞或细胞
 ## 下载与运行
 
 ### Windows 安装版
+
+**品牌更新说明：**新产品名为 **FigPub**。当前已发布的 0.6.2 RC2 安装包仍使用原 Figure Workbench 安装文件名及程序标识；已发布二进制不因源码更名而自动改变。
 
 [下载 Figure Workbench 0.6.2 安装 EXE](https://github.com/aper-ai/figure-workbench/releases/download/v0.6.2-rc.2/Figure_Workbench_0.6.2_Setup.exe) · [0.6.2 RC2 发行说明与验证状态](https://github.com/aper-ai/figure-workbench/releases/tag/v0.6.2-rc.2)
 
