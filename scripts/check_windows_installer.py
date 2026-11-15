@@ -24,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / 'packaging'))
 from build_windows_full import MANIFEST, verify_full_directory
 from build_windows_installer import APP_ID, digest
+from scripts.inspect_windows_shortcut import inspect_shortcut
 
 UNINSTALL_KEY = 'Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\' + APP_ID + '_is1'
 
@@ -51,6 +52,45 @@ def execute(executable: Path, arguments: list[str], timeout=900) -> int:
     if result.returncode not in (0, 3010):
         raise RuntimeError(f'{executable.name} failed with exit code {result.returncode}.')
     return result.returncode
+
+
+def verify_shortcut(shortcut: Path, payload: Path, result: dict, phase: str) -> None:
+    observation = {'phase': phase, 'path': str(shortcut), 'passed': False,
+                   'expected_target': str(payload / 'FigureWorkbench.exe'),
+                   'expected_working_directory': str(payload)}
+    result.setdefault('shortcut_checks', []).append(observation)
+    # WScript can replace Chinese path characters with '?' on ACP 1252 systems.
+    # Keep both original readings, but validate the explicit Unicode interface.
+    readings = inspect_shortcut(shortcut)
+    observation['readers'] = readings
+    native = readings['shell_link_w']
+    if (native.get('error') or native.get('target_hresult') != 0
+            or native.get('working_directory_hresult') != 0):
+        raise ValueError('The Unicode Start menu shortcut reader did not succeed.')
+    if readings.get('transport_matches') is not True:
+        raise ValueError('Start menu shortcut Unicode transport changed the returned values.')
+    if readings.get('shortcut_file', {}).get('unchanged_after_read') is not True:
+        raise ValueError('Start menu shortcut changed while it was being inspected.')
+    observation['native_identity'] = {}
+    for field, expected in (('target', payload / 'FigureWorkbench.exe'), ('working_directory', payload)):
+        value = native.get(field)
+        identity = {'value': value}
+        observation['native_identity'][field] = identity
+        if not isinstance(value, str) or not value or not Path(value).is_absolute():
+            raise ValueError(f'Start menu shortcut has an invalid Unicode {field}.')
+        actual = Path(value)
+        try:
+            resolved = actual.resolve(strict=True)
+            expected_resolved = expected.resolve(strict=True)
+            samefile = actual.samefile(expected)
+        except (OSError, ValueError) as exc:
+            identity['failure'] = repr(exc)
+            raise ValueError(f'Start menu shortcut {field} is not an existing installed path.') from exc
+        identity.update({'strict_resolve': str(resolved),
+                         'expected_strict_resolve': str(expected_resolved), 'samefile': samefile})
+        if resolved != expected_resolved or not samefile:
+            raise ValueError(f'Start menu shortcut {field} does not identify the installed payload.')
+    observation['passed'] = True
 
 
 def check(installer: Path, build_record: Path, output: Path) -> dict:
@@ -98,7 +138,7 @@ def check(installer: Path, build_record: Path, output: Path) -> dict:
         if not all(path.is_file() and path.read_bytes() == marker for path in markers):
             raise ValueError('Installation or uninstall changed a synthetic user project.')
 
-    def verify_installation():
+    def verify_installation(phase):
         actual = verify_full_directory(payload, expected_manifest_sha256=build['payload_manifest_sha256'])
         if actual['source_identity'] != build['source_identity']:
             raise ValueError('Installed payload does not match the build source.')
@@ -107,28 +147,23 @@ def check(installer: Path, build_record: Path, output: Path) -> dict:
             raise ValueError('The installer was not registered for the current user at the chosen path.')
         if registration(winreg.HKEY_LOCAL_MACHINE):
             raise ValueError('A per-machine application registration was unexpectedly created.')
-        shortcut = powershell_json(
+        shortcut = Path(powershell_json(
             "$programs=[Environment]::GetFolderPath('Programs');"
             "$path=Join-Path $programs 'Figure Workbench.lnk';"
-            "if(-not(Test-Path -LiteralPath $path)){throw 'Start menu shortcut is missing.'};"
-            "$link=(New-Object -ComObject WScript.Shell).CreateShortcut($path);"
-            "[ordered]@{path=$path;target=$link.TargetPath;working_directory=$link.WorkingDirectory}|ConvertTo-Json -Compress"
-        )
-        if Path(shortcut['target']).resolve() != payload / 'FigureWorkbench.exe':
-            raise ValueError('Start menu shortcut points outside the installed payload.')
-        if Path(shortcut['working_directory']).resolve() != payload:
-            raise ValueError('Start menu shortcut has the wrong working directory.')
+            "[ordered]@{path=$path}|ConvertTo-Json -Compress"
+        )['path'])
+        verify_shortcut(shortcut, payload, result, phase)
         preserved()
-        return actual, Path(shortcut['path'])
+        return actual, shortcut
 
     try:
         arguments = ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', f'/DIR={install_root}']
         result['install_exit_code'] = execute(installer.resolve(), [*arguments, f'/LOG={sandbox / "install.log"}'])
-        actual, shortcut = verify_installation()
+        actual, shortcut = verify_installation('per_user_install')
         result['scenarios'].append({'name': 'per_user_install', 'passed': True,
                                     'verified_payload_files': actual['verified_files']})
         result['reinstall_exit_code'] = execute(installer.resolve(), [*arguments, f'/LOG={sandbox / "reinstall.log"}'])
-        verify_installation()
+        verify_installation('reinstall')
         result['scenarios'].append({'name': 'reinstall', 'passed': True})
         manifest = json.loads((payload / MANIFEST).read_text('utf-8'))
         installed_names = [item['path'] for item in manifest['files']] + [MANIFEST]

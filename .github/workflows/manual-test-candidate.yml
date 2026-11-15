@@ -137,11 +137,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Complete toolkit assembly failed.' }
 
       - name: Build one Windows setup executable
+        id: build_setup
         run: |
           python packaging/build_windows_installer.py --toolkit dist/Figure_Workbench_0.6.2_Windows_x64 --webview-bootstrapper .ci-webview/MicrosoftEdgeWebview2Setup.exe --webview-record .ci-manual-test/webview-bootstrapper.json --output dist/Figure_Workbench_0.6.2_Setup.exe --record .ci-manual-test/installer-build.json --expected-commit "$env:GITHUB_SHA"
           if ($LASTEXITCODE -ne 0) { throw 'Single-file Windows installer build failed.' }
 
-      - name: Verify per-user installation, reinstall, project preservation and uninstall
+      - name: Verify Unicode shortcuts, per-user installation, reinstall, project preservation and uninstall
         run: python scripts/check_windows_installer.py --installer dist/Figure_Workbench_0.6.2_Setup.exe --build-record .ci-manual-test/installer-build.json --output .ci-manual-test/installer-smoke.json
 
       - name: Record internal candidate identities
@@ -274,6 +275,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/cleanup_release_downloads.py --repository "$env:GITHUB_REPOSITORY" --new-tag "$env:CANDIDATE_TAG" --expected-commit "$env:GITHUB_SHA" --installer dist/Figure_Workbench_0.6.2_Setup.exe --record .ci-manual-test/download-cleanup.json
+
+      - name: Retain the compiled setup when later validation fails
+        if: ${{ failure() && steps.build_setup.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-installer-candidate-${{ github.sha }}
+          compression-level: 0
+          path: |
+            dist/Figure_Workbench_0.6.2_Setup.exe
+            .ci-manual-test/installer-build.json
+            .ci-manual-test/installer-build.compiler.log
+            .ci-manual-test/installer-smoke.json
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Retain build records including failures
         if: always()

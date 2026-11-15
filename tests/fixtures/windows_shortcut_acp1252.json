@@ -1,0 +1,59 @@
+{
+  "source": {
+    "repository": "aper-ai/figure-workbench",
+    "run_id": 43713450156,
+    "commit": "d0b8de7a42dc30bce24b9d571537f7e397e37748",
+    "artifact_id": 14160788448,
+    "artifact_sha256": "9d36fa26773d1004d4b6d52deb6e8d28753b270358ca79e2d6974f0ff4215d51",
+    "scope": "Synthetic minimal-payload shortcut probe; no application or scientific model execution."
+  },
+  "sandbox": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab",
+  "expected": {
+    "target": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab\\Application 安装目录\\versions\\0.6.2-d0b8de7a42dc\\FigureWorkbench.exe",
+    "working_directory": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab\\Application 安装目录\\versions\\0.6.2-d0b8de7a42dc"
+  },
+  "readers": {
+    "path": "C:\\Users\\runneradmin\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Figure Workbench.lnk",
+    "wscript": {
+      "target": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab\\Application ????\\versions\\0.6.2-d0b8de7a42dc\\FigureWorkbench.exe",
+      "working_directory": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab\\Application ????\\versions\\0.6.2-d0b8de7a42dc",
+      "arguments": "",
+      "error": null
+    },
+    "shell_link_w": {
+      "target": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab\\Application 安装目录\\versions\\0.6.2-d0b8de7a42dc\\FigureWorkbench.exe",
+      "raw_target": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab\\Application 安装目录\\versions\\0.6.2-d0b8de7a42dc\\FigureWorkbench.exe",
+      "working_directory": "D:\\a\\_temp\\FigureWorkbench installer ao3q65ab\\Application 安装目录\\versions\\0.6.2-d0b8de7a42dc",
+      "arguments": "",
+      "target_hresult": 0,
+      "raw_target_hresult": 0,
+      "working_directory_hresult": 0,
+      "arguments_hresult": 0,
+      "target_flags": 0,
+      "raw_target_flags": 4,
+      "buffer_capacity": 260,
+      "error": null
+    },
+    "transport_utf16le_base64": {
+      "wscript.target": "RAA6AFwAYQBcAF8AdABlAG0AcABcAEYAaQBnAHUAcgBlAFcAbwByAGsAYgBlAG4AYwBoACAAaQBuAHMAdABhAGwAbABlAHIAIABhAG8AMwBxADYANQBhAGIAXABBAHAAcABsAGkAYwBhAHQAaQBvAG4AIAA/AD8APwA/AFwAdgBlAHIAcwBpAG8AbgBzAFwAMAAuADYALgAyAC0AZAAwAGIAOABkAGUANwBhADQAMgBkAGMAXABGAGkAZwB1AHIAZQBXAG8AcgBrAGIAZQBuAGMAaAAuAGUAeABlAA==",
+      "wscript.working_directory": "RAA6AFwAYQBcAF8AdABlAG0AcABcAEYAaQBnAHUAcgBlAFcAbwByAGsAYgBlAG4AYwBoACAAaQBuAHMAdABhAGwAbABlAHIAIABhAG8AMwBxADYANQBhAGIAXABBAHAAcABsAGkAYwBhAHQAaQBvAG4AIAA/AD8APwA/AFwAdgBlAHIAcwBpAG8AbgBzAFwAMAAuADYALgAyAC0AZAAwAGIAOABkAGUANwBhADQAMgBkAGMA",
+      "wscript.arguments": "",
+      "shell_link_w.target": "RAA6AFwAYQBcAF8AdABlAG0AcABcAEYAaQBnAHUAcgBlAFcAbwByAGsAYgBlAG4AYwBoACAAaQBuAHMAdABhAGwAbABlAHIAIABhAG8AMwBxADYANQBhAGIAXABBAHAAcABsAGkAYwBhAHQAaQBvAG4AIACJW8WI7nZVX1wAdgBlAHIAcwBpAG8AbgBzAFwAMAAuADYALgAyAC0AZAAwAGIAOABkAGUANwBhADQAMgBkAGMAXABGAGkAZwB1AHIAZQBXAG8AcgBrAGIAZQBuAGMAaAAuAGUAeABlAA==",
+      "shell_link_w.working_directory": "RAA6AFwAYQBcAF8AdABlAG0AcABcAEYAaQBnAHUAcgBlAFcAbwByAGsAYgBlAG4AYwBoACAAaQBuAHMAdABhAGwAbABlAHIAIABhAG8AMwBxADYANQBhAGIAXABBAHAAcABsAGkAYwBhAHQAaQBvAG4AIACJW8WI7nZVX1wAdgBlAHIAcwBpAG8AbgBzAFwAMAAuADYALgAyAC0AZAAwAGIAOABkAGUANwBhADQAMgBkAGMA",
+      "shell_link_w.arguments": "",
+      "shell_link_w.raw_target": "RAA6AFwAYQBcAF8AdABlAG0AcABcAEYAaQBnAHUAcgBlAFcAbwByAGsAYgBlAG4AYwBoACAAaQBuAHMAdABhAGwAbABlAHIAIABhAG8AMwBxADYANQBhAGIAXABBAHAAcABsAGkAYwBhAHQAaQBvAG4AIACJW8WI7nZVX1wAdgBlAHIAcwBpAG8AbgBzAFwAMAAuADYALgAyAC0AZAAwAGIAOABkAGUANwBhADQAMgBkAGMAXABGAGkAZwB1AHIAZQBXAG8AcgBrAGIAZQBuAGMAaAAuAGUAeABlAA=="
+    },
+    "powershell_version": "7.6.9",
+    "powershell_edition": "Core",
+    "output_encoding": "utf-8",
+    "ansi_code_page": 1252,
+    "process_architecture": "X64",
+    "transport_matches": true,
+    "shortcut_file": {
+      "bytes": 1662,
+      "sha256": "1a33b0abff790e06c6012b45202b61608cb4f64f1513041cc0999d8d5bf8a507",
+      "sha256_after_read": "1a33b0abff790e06c6012b45202b61608cb4f64f1513041cc0999d8d5bf8a507",
+      "unchanged_after_read": true
+    }
+  }
+}

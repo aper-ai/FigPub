@@ -2,7 +2,7 @@
 import base64
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -95,6 +95,95 @@ def test_installer_helpers_propagate_powershell_failures(monkeypatch, tmp_path, 
             bootstrapper.windows_file_metadata(tmp_path / 'setup.exe')
         else:
             installer_smoke.powershell_json("throw 'Module load failed'")
+
+
+@pytest.fixture
+def recorded_shortcut(monkeypatch, tmp_path):
+    # Replay the actual Windows ACP 1252 COM results against local real files.
+    # Only the disposable runner prefix/separators change; Unicode vs '?' stays.
+    fixture = json.loads((ROOT / 'tests/fixtures/windows_shortcut_acp1252.json').read_text('utf-8'))
+    readings = fixture['readers']
+    assert readings['ansi_code_page'] == 1252
+    for key, encoded in readings['transport_utf16le_base64'].items():
+        reader, field = key.split('.', 1)
+        assert base64.b64decode(encoded).decode('utf-16le') == readings[reader][field]
+    prefix = PureWindowsPath(fixture['sandbox'])
+    for reader in ('wscript', 'shell_link_w'):
+        for field in ('target', 'working_directory', 'raw_target'):
+            if readings[reader].get(field):
+                relative = PureWindowsPath(readings[reader][field]).relative_to(prefix)
+                readings[reader][field] = str(tmp_path.joinpath(*relative.parts))
+    for key in readings['transport_utf16le_base64']:
+        reader, field = key.split('.', 1)
+        readings['transport_utf16le_base64'][key] = base64.b64encode(
+            readings[reader][field].encode('utf-16le')).decode('ascii')
+    payload = Path(readings['shell_link_w']['working_directory'])
+    payload.mkdir(parents=True)
+    (payload / 'FigureWorkbench.exe').write_bytes(b'Synthetic executable identity fixture')
+    shortcut = tmp_path / 'Programs/Figure Workbench.lnk'
+    readings['path'] = str(shortcut)
+    monkeypatch.setattr(installer_smoke, 'inspect_shortcut', lambda path: readings)
+    return SimpleNamespace(readings=readings, payload=payload, shortcut=shortcut, result={})
+
+
+def test_unicode_shortcut_identity_survives_the_observed_wscript_ansi_loss(recorded_shortcut):
+    case = recorded_shortcut
+    assert 'Application ????' in case.readings['wscript']['target']
+    assert not Path(case.readings['wscript']['target']).exists()
+    assert 'Application 安装目录' in case.readings['shell_link_w']['target']
+    for phase in ('per_user_install', 'reinstall'):
+        installer_smoke.verify_shortcut(case.shortcut, case.payload, case.result, phase)
+    assert [item['phase'] for item in case.result['shortcut_checks']] == ['per_user_install', 'reinstall']
+    for observation in case.result['shortcut_checks']:
+        assert observation['passed'] is True
+        assert observation['readers'] is case.readings
+        assert all(item['samefile'] is True for item in observation['native_identity'].values())
+
+
+@pytest.mark.parametrize(('scope', 'field', 'bad_value'), [
+    ('shell_link_w', 'target_hresult', 1),
+    ('shell_link_w', 'working_directory_hresult', -2147467259),
+    ('shell_link_w', 'error', 'IPersistFile.Load failed'),
+    ('', 'transport_matches', False),
+    ('shortcut_file', 'unchanged_after_read', False),
+])
+def test_shortcut_reader_failures_keep_original_diagnostics(recorded_shortcut, scope, field, bad_value):
+    case = recorded_shortcut
+    values = case.readings[scope] if scope else case.readings
+    values[field] = bad_value
+    with pytest.raises(ValueError):
+        installer_smoke.verify_shortcut(case.shortcut, case.payload, case.result, 'per_user_install')
+    observation = case.result['shortcut_checks'][0]
+    assert observation['passed'] is False
+    assert observation['readers'] is case.readings
+    assert 'Application ????' in observation['readers']['wscript']['target']
+    assert 'Application 安装目录' in observation['readers']['shell_link_w']['target']
+
+
+@pytest.mark.parametrize('replacement', ['missing', 'different_file', 'outside_hardlink', 'wrong_directory'])
+def test_shortcut_requires_the_existing_canonical_payload_and_file_identity(recorded_shortcut, replacement):
+    case = recorded_shortcut
+    native = case.readings['shell_link_w']
+    target = case.payload / 'FigureWorkbench.exe'
+    # A correct legacy reading must never excuse a wrong native target.
+    case.readings['wscript']['target'] = str(target)
+    if replacement == 'missing':
+        target.unlink()
+    elif replacement in ('different_file', 'outside_hardlink'):
+        other = case.payload.parent / 'Outside.exe'
+        if replacement == 'outside_hardlink':
+            other.hardlink_to(target)
+            assert other.samefile(target)
+        else:
+            other.write_bytes(b'Different file')
+        native['target'] = str(other)
+    else:
+        native['working_directory'] = str(case.payload.parent)
+    with pytest.raises(ValueError, match='not an existing installed path|does not identify the installed payload'):
+        installer_smoke.verify_shortcut(case.shortcut, case.payload, case.result, 'per_user_install')
+    observation = case.result['shortcut_checks'][0]
+    assert observation['passed'] is False
+    assert observation['readers']['shell_link_w'] == native
 
 
 @pytest.fixture
