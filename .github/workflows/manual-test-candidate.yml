@@ -61,17 +61,6 @@ jobs:
           npm ci
           if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
 
-      - name: Prepare isolated Cellpose CPU dependencies and pinned official weights
-        run: python scripts/prepare_cellpose_acceptance.py --output .ci-cellpose --record .ci-manual-test/model-environment.json
-
-      - name: Fetch the pinned Windows runtime
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release download build-runtime-0.4.0 --repo "$env:GITHUB_REPOSITORY" --pattern Figure_Workbench_0.4.0_Windows_Main.zip --dir .ci-input
-
-      - name: Assemble the portable nuclei and cyto3 component
-        run: python packaging/build_cellpose_candidate.py --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --environment .ci-cellpose --output dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --record .ci-manual-test/portable-cellpose-build.json
-
       - name: Build standalone browser candidate
         run: npm run build:browser
 
@@ -82,6 +71,17 @@ jobs:
         env:
           FW_ALIGNMENT_RESULTS: .ci-manual-test/alignment-snap
         run: python tests/browser_alignment_snap.py
+
+      - name: Prepare isolated Cellpose CPU dependencies and pinned official weights
+        run: python scripts/prepare_cellpose_acceptance.py --output .ci-cellpose --record .ci-manual-test/model-environment.json
+
+      - name: Fetch the pinned Windows runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download build-runtime-0.4.0 --repo "$env:GITHUB_REPOSITORY" --pattern Figure_Workbench_0.4.0_Windows_Main.zip --dir .ci-input
+
+      - name: Assemble the portable nuclei and cyto3 component
+        run: python packaging/build_cellpose_candidate.py --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --environment .ci-cellpose --output dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --record .ci-manual-test/portable-cellpose-build.json
 
       - name: Build the native launcher and complete Windows package
         run: |

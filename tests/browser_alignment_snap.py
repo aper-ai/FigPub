@@ -87,24 +87,57 @@ class Surface:
             self.page.locator('#snap-enabled').set_checked(enabled)
 
     def drag(self, index, dx, dy, *, alt=False, select_only=True):
+        # Capture real DOM hit testing and pointer delivery so a failed guide
+        # assertion distinguishes a missed image from a gesture regression.
+        self.page.evaluate("""()=>{
+          window.__alignmentPointerEvents=[];
+          if(window.__alignmentPointerRecorder)return;
+          window.__alignmentPointerRecorder=event=>{
+            const target=event.target,object=target?.closest?.('[data-panel-id],[data-object]');
+            window.__alignmentPointerEvents.push({type:event.type,tag:target?.tagName||'',id:target?.id||'',object:object?.dataset.panelId||object?.dataset.object||'',
+              x:event.clientX??null,y:event.clientY??null,buttons:event.buttons??null,pointerId:event.pointerId??null});
+          };
+          for(const type of ['pointerdown','pointermove','pointerup','pointercancel','lostpointercapture','blur'])window.addEventListener(type,window.__alignmentPointerRecorder,true);
+        }""")
         if select_only:
             self.clear_selection()
         panel = self.snapshot()[index]
         start = self.screen(panel['x'] + panel['width'] * .3, panel['y'] + panel['height'] * .5)
         matrix = self.metric()
+        self.current_trace = {'surface': self.kind, 'panel_id': panel['id'], 'start': start,
+                              'dx_mm': dx, 'dy_mm': dy, 'alt': alt, 'matrix': matrix}
+        self.report.setdefault('pointer_traces', []).append(self.current_trace)
+        self.current_trace['hit_before_move'] = self.pointer_hit(start)
         if alt:
             self.page.keyboard.down('Alt')
         self.page.mouse.move(*start)
+        self.current_trace['hit_before_down'] = self.pointer_hit(start)
         self.page.mouse.down()
-        self.page.mouse.move(start[0] + dx * matrix['a'] + dy * matrix['c'],
-                             start[1] + dx * matrix['b'] + dy * matrix['d'], steps=8)
+        self.current_trace['state_after_down'] = self.pointer_hit(start)
+        self.current_trace['events_after_down'] = self.page.evaluate('()=>window.__alignmentPointerEvents')
+        end = (start[0] + dx * matrix['a'] + dy * matrix['c'],
+               start[1] + dx * matrix['b'] + dy * matrix['d'])
+        self.page.mouse.move(*end, steps=8)
         self.page.wait_for_timeout(120)
+        self.current_trace['state_after_move'] = self.pointer_hit(end)
+        self.current_trace['events'] = self.page.evaluate('()=>window.__alignmentPointerEvents')
+        self.current_trace['geometry_during_drag'] = self.snapshot()
+
+    def pointer_hit(self, point):
+        return self.page.evaluate("""([x,y])=>{
+          const target=document.elementFromPoint(x,y),object=target?.closest('[data-panel-id],[data-object]');
+          return {tag:target?.tagName||'',id:target?.id||'',object:object?.dataset.panelId||object?.dataset.object||'',
+            className:target?.getAttribute('class')||'',busy:document.body.classList.contains('busy'),
+            selection_info:document.querySelector('#selection-info')?.textContent||'',
+            selected_outlines:document.querySelectorAll('.selection-outline,.figure-panel.is-selected').length};
+        }""", point)
 
     def release(self, alt=False):
         self.page.mouse.up()
         if alt:
             self.page.keyboard.up('Alt')
         self.page.wait_for_timeout(60)
+        self.current_trace['events'] = self.page.evaluate('()=>window.__alignmentPointerEvents')
         assert not self.guides(), 'Reference lines must clear at pointer release'
 
     def run(self):

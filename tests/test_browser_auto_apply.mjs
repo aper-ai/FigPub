@@ -74,6 +74,26 @@ async function fixture(t){
   return {window,doc,$,downloads,edit,click,save,geometry,select,key};
 }
 
+test('a canvas image receives pointer selection and a committed drag after clearing the selection',async t=>{
+  const {window,doc,$,geometry}=await fixture(t);
+  window.DOMPoint=class {constructor(x,y){this.x=x;this.y=y;}matrixTransform(){return {x:this.x,y:this.y};}};
+  window.SVGSVGElement.prototype.getScreenCTM=()=>({a:1,b:0,inverse:()=>({})});
+  const pointer=(target,type,x,y)=>target.dispatchEvent(new window.PointerEvent(type,{bubbles:true,button:0,buttons:type==='pointerup'?0:1,pointerId:7,clientX:x,clientY:y,altKey:true}));
+  pointer($('#studio-svg > rect'),'pointerdown',2,2);
+  pointer(window,'pointerup',2,2);
+  assert.equal($('#selection-info').textContent,'未选中对象');
+  const panel=doc.querySelectorAll('#studio-svg > [data-object]')[2],before=geometry()[2];
+  const coordinates=before.transform.match(/translate\(([-\d.]+) ([-\d.]+)\)/),x=Number(coordinates[1])+10,y=Number(coordinates[2])+10;
+  pointer(panel.querySelector('image'),'pointerdown',x,y);
+  assert.equal($('#selection-info').textContent,'已选择 1 个对象');
+  assert.equal($('#studio-svg .selection-outline')?.parentElement.dataset.object,before.id);
+  pointer(window,'pointermove',x+8,y+5);
+  await until(()=>geometry()[2].transform!==before.transform,'canvas image did not move');
+  pointer(window,'pointerup',x+8,y+5);
+  assert.notEqual(geometry()[2].transform,before.transform);
+  assert.equal($('#snap-guides').childElementCount,0);
+});
+
 test('browser preset and layout selects apply immediately and no parameter Apply button remains',async t=>{
   const {$,edit,click,save,select}=await fixture(t);
   assert.equal($('#canvas-form button[type="submit"]'),null);assert.equal($('#layout-form button[type="submit"]'),null);
