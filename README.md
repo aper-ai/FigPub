@@ -23,6 +23,49 @@ FigPub 将 Western blot 定量、qPCR 分析、多通道显微图像处理、组
 以下展示软件实际操作界面。为便于复现，界面中的分析示例使用合成测试数据；图片展示软件交互效果，不作为生物学实验结果或模型准确率的证明。
 
 <!-- FIGPUB_GALLERY_START -->
+
+### 工作台首页
+
+![工作台首页 — FigPub 实际界面](docs/screenshots/product/home.png)
+
+统一的科研图像和数据任务入口。
+
+### Western blot 定量
+
+![Western blot 定量 — FigPub 实际界面](docs/screenshots/product/wb.png)
+
+条带 ROI、定量结果和可编辑组图。
+
+### qPCR 分析
+
+![qPCR 分析 — FigPub 实际界面](docs/screenshots/product/qpcr.png)
+
+Ct 数据处理、生物学重复汇总与结果检查。
+
+### 多通道显微图像
+
+![多通道显微图像 — FigPub 实际界面](docs/screenshots/product/microscopy.png)
+
+通道伪彩、分屏显示与图像处理。
+
+### 组织与纤维分析
+
+![组织与纤维分析 — FigPub 实际界面](docs/screenshots/product/histology.png)
+
+组织图像定量及形态学工作流程。
+
+### 实例人工复核
+
+![实例人工复核 — FigPub 实际界面](docs/screenshots/product/instance-review.png)
+
+分割实例编辑、测量结果复核与工程恢复。
+
+### 科研组图
+
+![科研组图 — FigPub 实际界面](docs/screenshots/product/composition.png)
+
+图稿画布、对象布局、标注与导出。
+
 <!-- FIGPUB_GALLERY_END -->
 
 ## 下载与运行

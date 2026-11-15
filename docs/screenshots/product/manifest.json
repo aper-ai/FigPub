@@ -1,0 +1,65 @@
+[
+  {
+    "module": "工作台首页",
+    "file": "home.png",
+    "source_suite": "browser_professional_ui/home-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "73d103babdb2ac57db3efde703b2ae56a6518412c3485aa353e05fe98271695d",
+    "kind": "real_application_screenshot_with_synthetic_test_data"
+  },
+  {
+    "module": "Western blot 定量",
+    "file": "wb.png",
+    "source_suite": "browser_wb_workflow/01-wb-figure.png",
+    "width": 1440,
+    "height": 1000,
+    "sha256": "73aadea465d6d02b0b3bfad658a11a7224dfa9f79a9eacabcd4cebf0e35b2e88",
+    "kind": "real_application_screenshot_with_synthetic_test_data"
+  },
+  {
+    "module": "qPCR 分析",
+    "file": "qpcr.png",
+    "source_suite": "browser_professional_ui/analysis-results-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "cb371b133f640a02bf7c6dfcd10e287edece5a5b7ded3140b9577a0131c90307",
+    "kind": "real_application_screenshot_with_synthetic_test_data"
+  },
+  {
+    "module": "多通道显微图像",
+    "file": "microscopy.png",
+    "source_suite": "browser_channels/01-multichannel-split.png",
+    "width": 1600,
+    "height": 1100,
+    "sha256": "21147280844fae418466ddc989f84fdc1102b0c829f4b1aee9cc9e66cae9711a",
+    "kind": "real_application_screenshot_with_synthetic_test_data"
+  },
+  {
+    "module": "组织与纤维分析",
+    "file": "histology.png",
+    "source_suite": "browser_histology_fibers/histology-fiber-workflow.png",
+    "width": 1600,
+    "height": 1100,
+    "sha256": "959a36fa0655a3f83308bbf99bd509e98133dcb6bdb6f4d901282e7c1dc9f3f4",
+    "kind": "real_application_screenshot_with_synthetic_test_data"
+  },
+  {
+    "module": "实例人工复核",
+    "file": "instance-review.png",
+    "source_suite": "browser_instance_review/instance-review-restored.png",
+    "width": 996,
+    "height": 952,
+    "sha256": "9e7ab4216385067e6c9cac24b90e2b6dd9642388ead10e0b2934963bf4e94cd0",
+    "kind": "real_application_screenshot_with_synthetic_test_data"
+  },
+  {
+    "module": "科研组图",
+    "file": "composition.png",
+    "source_suite": "browser_professional_ui/composer-1440.png",
+    "width": 1440,
+    "height": 900,
+    "sha256": "ff0c53b2db16631271d7571bab88e6307260de009b18b1fe0a48c56d2af0807a",
+    "kind": "real_application_screenshot_with_synthetic_test_data"
+  }
+]
