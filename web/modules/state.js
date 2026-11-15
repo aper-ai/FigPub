@@ -7,7 +7,7 @@ import {initializeQpcrWorkspaces,qpcrParameters} from './qpcr-workspace.js';
 import {isActiveAnalysisJob} from './analysis-controller.js';
 
 export const state = {
-  project: null, health: null, tab: 'home', workspaceTask: null, importIntent: null, showGuide: true, lastError: null, lastErrorScope: null, selectedAssetId: null, selectedPanelId: null, selectedPanelIds: [], selectedAnnotationId: null,
+  project: null, health: null, workspaceStatus: null, tab: 'home', workspaceTask: null, importIntent: null, showGuide: true, lastError: null, lastErrorScope: null, selectedAssetId: null, selectedPanelId: null, selectedPanelIds: [], selectedAnnotationId: null,
   selectedRoiId: null, sourceRoi: null, sourceTool: 'select', sourceZoom: 1, sourcePan:{x:0,y:0},spacePressed:false,figureZoom:1,
   filter: '', assetKind: 'all', history: [], future: [], mutationSequence: 0, dirty: false, saveState: 'saved',
   busy: null, busyController: null, modal: null, preflight: null, showLayers: true,
@@ -157,6 +157,8 @@ export function setAnalysisChannel(id,selected,{single=false}={}) {
 }
 export function replaceProject(project, {selectFirst = true} = {}) {
   clearTimeout(saveTimer); state.project = ensureProject(project); state.history = []; state.future = [];
+  state.channelDescriptors.clear();state.channelDescriptorErrors.clear();state.filter='';state.assetKind='all';state.importIntent=null;
+  state.gelAbort?.abort();state.gelWorker?.terminate();state.gelWorker=null;state.gelAbort=null;state.gelReject=null;state.gelBusy=false;state.gelTaskToken=null;
   state.selectedAssetId = selectFirst ? project.assets[0]?.id || null : state.selectedAssetId;
   state.selectedPanelId = null; state.selectedPanelIds=[]; state.selectedAnnotationId = null; state.selectedRoiId = null; state.sourceRoi = null;state.sourcePan={x:0,y:0};state.sourceZoom=1;
   state.compositionPresetDraft=null;state.compositionInspectorTab=null;
@@ -205,6 +207,7 @@ export function changed() {
 }
 export function mutate(change, label = '编辑项目') {
   if (!state.project) return;
+  if(state.workspaceStatus?.has_recovery||state.workspaceStatus?.cleanup_pending)throw new Error('请先处理本机工作区，再进行编辑。');
   const before=captureRecipe();
   try {change(state.project);reconcilePanelLabels(state.project);}
   catch(error){restoreRecipe(before);throw error;}
@@ -251,6 +254,12 @@ export async function persistProject() {
   } finally {savePromise = null; emit();}
 }
 export async function flushSave() { while (state.dirty || savePromise) {await persistProject();} }
+/** A confirmed cleanup discards edits; wait for in-flight writes without saving a new copy. */
+export async function settleWorkspaceWrites() {
+  clearTimeout(saveTimer);
+  if(savePromise)await savePromise.catch(()=>{});
+  clearTimeout(saveTimer);
+}
 export async function withBusy(label, operation, {cancellable=true}={}) {
   if (state.busy) return;
   state.lastError=null;state.busy = label; state.busyController = cancellable?new AbortController():null; emit();
@@ -258,3 +267,4 @@ export async function withBusy(label, operation, {cancellable=true}={}) {
   catch (error) {if (error.name === 'AbortError') notify('操作已取消', 'info'); else notify(error.message || '操作未完成，请重试', 'error');}
   finally {state.busy = null; state.busyController = null; emit();}
 }
+

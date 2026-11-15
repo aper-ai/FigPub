@@ -2,7 +2,10 @@ name: Complete toolkit and scientific workflow acceptance
 
 on:
   push:
-    branches: [fix/interaction-lifecycle-0.6.1]
+    branches: [fix/workspace-privacy-0.6.2]
+  # Git refs API branch creation emits create; the jobs below reject tags and
+  # every branch except the exact acceptance branch.
+  create:
   workflow_dispatch:
 
 permissions:
@@ -14,6 +17,11 @@ concurrency:
 
 jobs:
   interaction-acceptance:
+    if: >-
+      ${{ github.ref == 'refs/heads/fix/workspace-privacy-0.6.2' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
+           (github.event_name == 'create' && github.event.ref_type == 'branch' &&
+            github.event.ref == 'fix/workspace-privacy-0.6.2')) }}
     runs-on: windows-latest
     timeout-minutes: 20
     env:
@@ -34,10 +42,24 @@ jobs:
       - name: Install locked interaction test dependencies
         run: |
           python -m pip install -r requirements-dev.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Interaction test dependency installation failed.' }
           npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
           python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed.' }
       - name: Verify delayed submission, task recovery, cancellation and keyboard behavior
         run: python tests/browser_task_lifecycle.py
+      - name: Verify automatic parameters in the standalone browser and desktop composition
+        env:
+          FW_AUTO_APPLY_RESULTS: test-results/interaction-preflight/auto-apply
+          FW_BROWSER_RESULTS: test-results/interaction-preflight/composition
+        run: |
+          npm run build:browser
+          if ($LASTEXITCODE -ne 0) { throw 'Standalone candidate build failed.' }
+          python tests/browser_auto_apply.py
+          if ($LASTEXITCODE -ne 0) { throw 'Automatic parameter interaction failed.' }
+          python tests/browser_composition.py
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop composition interaction failed.' }
       - name: Retain interaction preflight evidence before complete package assembly
         if: always()
         uses: actions/upload-artifact@v4
@@ -49,6 +71,11 @@ jobs:
 
   windows-acceptance:
     needs: interaction-acceptance
+    if: >-
+      ${{ github.ref == 'refs/heads/fix/workspace-privacy-0.6.2' &&
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch' ||
+           (github.event_name == 'create' && github.event.ref_type == 'branch' &&
+            github.event.ref == 'fix/workspace-privacy-0.6.2')) }}
     runs-on: windows-latest
     timeout-minutes: 90
     env:
@@ -68,9 +95,13 @@ jobs:
       - name: Install locked application and test dependencies
         run: |
           python -m pip install -r requirements-dev.txt -r requirements-desktop.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Application and test dependency installation failed.' }
           python -m pip install ziglang==0.15.2
+          if ($LASTEXITCODE -ne 0) { throw 'Launcher compiler installation failed.' }
           npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
           python -m playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw 'Chromium installation failed.' }
       - name: Prepare official isolated Cellpose CPU inference
         run: python scripts/prepare_cellpose_acceptance.py --output .ci-cellpose --record test-results/model-environment.json
       - name: Python numerical, persistence and service regressions
@@ -93,7 +124,7 @@ jobs:
         run: gh release download build-runtime-0.4.0 --repo "${{ github.repository }}" --pattern Figure_Workbench_0.4.0_Windows_Main.zip --dir .ci-input
       - name: Build the portable CPU component from the tested environment
         if: ${{ !cancelled() }}
-        run: python packaging/build_cellpose_candidate.py --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --environment .ci-cellpose --output dist/Figure_Workbench_0.6.1_Cellpose_CPU_Windows_x64 --record test-results/portable-cellpose-build.json
+        run: python packaging/build_cellpose_candidate.py --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --environment .ci-cellpose --output dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --record test-results/portable-cellpose-build.json
       - name: Frontend lint and DOM/service regressions
         if: ${{ !cancelled() }}
         run: python scripts/check_frontend.py --output test-results
@@ -109,17 +140,22 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Pinned launcher compiler is unavailable.' }
           python packaging/build_desktop_launcher.py --zig "$zigPath" --output .ci-input/FigureWorkbench.exe
           if ($LASTEXITCODE -ne 0) { throw 'Native launcher compilation failed.' }
-          python packaging/build_windows_full.py build --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --launcher .ci-input/FigureWorkbench.exe --desktop-wheels .ci-desktop-wheels --component dist/Figure_Workbench_0.6.1_Cellpose_CPU_Windows_x64 --component-record test-results/portable-cellpose-build.json --output dist/Figure_Workbench_0.6.1_Windows_x64 --record test-results/windows-build.json
+          python packaging/build_windows_full.py build --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --launcher .ci-input/FigureWorkbench.exe --desktop-wheels .ci-desktop-wheels --component dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --component-record test-results/portable-cellpose-build.json --output dist/Figure_Workbench_0.6.2_Windows_x64 --record test-results/windows-build.json
           if ($LASTEXITCODE -ne 0) { throw 'Complete toolkit assembly failed.' }
       - name: Extract the actual final ZIP into a fresh installation directory
         if: ${{ !cancelled() }}
-        run: python packaging/build_windows_full.py extract --archive dist/Figure_Workbench_0.6.1_Windows_Full.zip --build-record test-results/windows-build.json --destination "dist/完整工具包 验收" --receipt test-results/full-toolkit-extraction.json
+        run: python packaging/build_windows_full.py extract --archive dist/Figure_Workbench_0.6.2_Windows_Full.zip --build-record test-results/windows-build.json --destination "dist/完整工具包 验收" --receipt test-results/full-toolkit-extraction.json
       - name: Execute both models using the interpreter from the final complete ZIP
         if: ${{ !cancelled() }}
-        run: python scripts/check_portable_cellpose.py --component "dist/完整工具包 验收/Figure_Workbench_0.6.1_Windows_x64" --toolkit-archive dist/Figure_Workbench_0.6.1_Windows_Full.zip --extraction-record test-results/full-toolkit-extraction.json --output test-results
+        run: python scripts/check_portable_cellpose.py --component "dist/完整工具包 验收/Figure_Workbench_0.6.2_Windows_x64" --toolkit-archive dist/Figure_Workbench_0.6.2_Windows_Full.zip --extraction-record test-results/full-toolkit-extraction.json --output test-results
       - name: Complete real browser workflow matrix
         if: ${{ !cancelled() }}
         run: python scripts/run_acceptance.py --output test-results/acceptance
+      - name: Capture the labelled AI documentation input in the actual application
+        if: ${{ !cancelled() }}
+        env:
+          FW_DOC_OUTPUT: test-results/documentation
+        run: python scripts/capture_privacy_documentation.py
       - name: Retain browser and complete-toolkit evidence before native acceptance
         if: always()
         uses: actions/upload-artifact@v4
@@ -140,7 +176,7 @@ jobs:
           retention-days: 30
       - name: Native Windows client acceptance
         if: ${{ !cancelled() }}
-        run: python tests/desktop_windows_smoke.py --app-dir "dist/完整工具包 验收/Figure_Workbench_0.6.1_Windows_x64" --toolkit-archive dist/Figure_Workbench_0.6.1_Windows_Full.zip --extraction-record test-results/full-toolkit-extraction.json --output test-results/desktop
+        run: python tests/desktop_windows_smoke.py --app-dir "dist/完整工具包 验收/Figure_Workbench_0.6.2_Windows_x64" --toolkit-archive dist/Figure_Workbench_0.6.2_Windows_Full.zip --extraction-record test-results/full-toolkit-extraction.json --output test-results/desktop
       - name: Verify the release gate
         if: ${{ !cancelled() }}
         run: python scripts/release_gate.py --reports test-results --expected-commit "${{ github.sha }}"
@@ -150,6 +186,7 @@ jobs:
         with:
           name: visual-review-${{ github.sha }}
           path: |
+            test-results/documentation/
             test-results/acceptance/**/*.png
             test-results/acceptance/**/*.json
             test-results/desktop/*.png
@@ -171,8 +208,8 @@ jobs:
         with:
           name: verified-candidate-${{ github.sha }}
           path: |
-            dist/Figure_Workbench_0.6.1_Windows_Full.zip
-            dist/Figure_Workbench_0.6.1_Source.zip
-            dist/Figure_Workbench_0.6.1_Browser.html
+            dist/Figure_Workbench_0.6.2_Windows_Full.zip
+            dist/Figure_Workbench_0.6.2_Source.zip
+            dist/Figure_Workbench_0.6.2_Browser.html
           if-no-files-found: error
           retention-days: 30

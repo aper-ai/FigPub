@@ -9,8 +9,9 @@ bindInteractions();
 
 async function start() {
   try {
-    const [health, project] = await Promise.all([request('/api/health'),request('/api/project')]);
-    state.health=health;
+    const [health, project, workspaceStatus] = await Promise.all([request('/api/health'),request('/api/project'),request('/api/workspace/status')]);
+    state.health=health;state.workspaceStatus=workspaceStatus;
+    state.modal=workspaceStatus.cleanup_pending?{type:'workspace-cleanup'}:workspaceStatus.has_recovery?{type:'workspace-recovery'}:null;
     if(project.settings?.analysis_params)Object.assign(state.analysisParams,project.settings.analysis_params);
     replaceProject(project);
     state.tab='home';
@@ -31,6 +32,7 @@ document.fonts?.addEventListener('loadingdone',emit);
 window.figureWorkbenchPrepareClose = async () => {
   const active=document.activeElement;
   try {
+    if(state.workspaceStatus?.has_recovery||state.workspaceStatus?.cleanup_pending)return {saved:true,busy:false,message:'尚未加载本机素材；退出不会自动恢复工作区。'};
     if(active?.matches?.('[data-pending-edit]')) {
       if(active.checkValidity&&!active.checkValidity())return {saved:false,busy:false,message:'当前输入无效，请返回工作台修正后再退出。'};
       active.dispatchEvent(new Event('change',{bubbles:true}));
@@ -48,3 +50,4 @@ window.figureWorkbenchPrepareClose = async () => {
     return {saved:false,busy:Boolean(state.busy || state.gelBusy || state.wbWorking || state.job&&['queued','running'].includes(state.job.status)),message:`保存未完成：${error.message || '请返回工作台另存项目后再退出。'}`};
   }
 };
+

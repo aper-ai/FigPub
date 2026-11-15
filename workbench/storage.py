@@ -14,6 +14,7 @@ import json
 import math
 import os
 import re
+import shutil
 import stat
 import tempfile
 import threading
@@ -47,6 +48,14 @@ Image.MAX_IMAGE_PIXELS = MAX_IMAGE_PIXELS
 
 class ConflictError(ValueError):
     """The caller edited a project revision which is no longer current."""
+
+
+class WorkspaceRecoveryPending(ConflictError):
+    """An autosave must be explicitly restored or replaced before edits."""
+
+
+class WorkspaceCleanupPending(ConflictError):
+    """An interrupted cleanup must finish before source data may be used."""
 
 
 def now_iso() -> str:
@@ -461,7 +470,7 @@ def inspect_source(path: Path, name: str) -> dict:
 
 
 class ProjectStore:
-    def __init__(self, root: str | Path):
+    def __init__(self, root: str | Path, *, restore_on_start: bool = True):
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.objects = self.root / 'originals'
@@ -472,8 +481,12 @@ class ProjectStore:
         self.table_cache = ByteLRU(24 * 1024 * 1024, 12)
         self.localization_cache = ByteLRU(16 * 1024 * 1024, 12)
         self.registry = self._read_json(self.root / 'assets.json', {})
+        self.cleanup_marker = self.root / '.workspace-clear-pending.json'
+        self.cleanup_pending = self.cleanup_marker.exists()
+        self._recovery_project = None
+        self._cleanup_project = new_project()
         self.project = None
-        for path in (self.root / 'current.json', self.root / 'current.backup.json'):
+        for path in (() if self.cleanup_pending else (self.root / 'current.json', self.root / 'current.backup.json')):
             try:
                 value = json.loads(path.read_text('utf-8'))
                 validate_project(value, self.registry)
@@ -483,7 +496,103 @@ class ProjectStore:
                 continue
         if self.project is None:
             self.project = new_project()
-            self._persist()
+            if not self.cleanup_pending:
+                self._persist()
+        elif not restore_on_start and self._has_workspace_content(self.project):
+            # Do not persist the new blank view: doing so would overwrite the
+            # user's only autosave before they have made a recovery decision.
+            self._recovery_project = copy.deepcopy(self.project)
+            self.project = new_project()
+
+    @staticmethod
+    def _has_workspace_content(project):
+        return bool(project.get('assets') or project.get('panels') or project.get('annotations')
+                    or project.get('measurements') or project.get('revision', 0))
+
+    def _require_workspace_ready(self):
+        if self.cleanup_pending:
+            raise WorkspaceCleanupPending('本机工作区清理尚未完成，请先重试清理。')
+        if self._recovery_project is not None:
+            raise WorkspaceRecoveryPending('检测到上次工作区，请先选择恢复、明确新建或清除本机工作区。')
+
+    @property
+    def has_pending_recovery(self):
+        return self._recovery_project is not None and not self.cleanup_pending
+
+    def workspace_status(self):
+        with self.lock:
+            recovery = self._recovery_project
+            return {
+                'has_recovery': self.has_pending_recovery,
+                'cleanup_pending': self.cleanup_pending,
+                'recovery': ({'title': recovery.get('title', ''),
+                              'updated_at': recovery.get('updated_at'),
+                              'asset_count': len(recovery.get('assets', []))}
+                             if recovery is not None and not self.cleanup_pending else None),
+                'stored_asset_count': len(self.registry),
+                'stored_bytes': sum(int(item.get('size_bytes', 0)) for item in self.registry.values()),
+                'current_asset_count': 0 if self.cleanup_pending else len(self.project['assets']),
+            }
+
+    def restore_workspace(self):
+        with self.lock:
+            if self.cleanup_pending:
+                raise WorkspaceCleanupPending('本机工作区清理尚未完成，请先重试清理。')
+            if self._recovery_project is None:
+                raise ConflictError('没有待恢复的本机工作区。')
+            recovery = self._recovery_project
+            self._recovery_project = None
+            try:
+                # Recheck every source before displaying a recovered project.
+                self.verify_originals(recovery)
+                return self._commit_project(copy.deepcopy(recovery))
+            except Exception:
+                self._recovery_project = recovery
+                raise
+
+    def clear_workspace(self):
+        """Delete only application-owned working copies, never external files.
+
+        The HTTP layer drains its requests and rejects active jobs before this
+        operation. A durable marker prevents a partially cleared autosave from
+        reappearing after an I/O failure or process interruption.
+        """
+        with self.lock:
+            atomic_write(self.cleanup_marker, json_bytes({'version': 1, 'started_at': now_iso()}))
+            self.cleanup_pending = True
+            deleted = 0
+            if self.objects.is_symlink():
+                # Never follow a replacement link outside the owned directory.
+                self.objects.unlink()
+                self.objects.mkdir()
+            elif self.objects.exists():
+                for path in self.objects.iterdir():
+                    if path.is_symlink() or not path.is_dir():
+                        path.unlink()
+                        deleted += 1
+                    else:
+                        shutil.rmtree(path)
+            else:
+                self.objects.mkdir()
+            owned_names = {'current.json', 'current.backup.json', 'assets.json'}
+            for path in self.root.iterdir():
+                name = path.name
+                owned_temporary = (name.startswith(('.current.json.', '.current.backup.json.', '.assets.json.', '.import-'))
+                                   or re.fullmatch(r'tmp[a-z0-9_]{8}\.(?:png|tiff?|jpe?g|bmp|webp|svg|pdf|csv|tsv|txt|xlsx)', name))
+                if name in owned_names or owned_temporary:
+                    if path.is_dir() and not path.is_symlink():
+                        raise OSError('工作区文件被目录替换，清理未完成。')
+                    path.unlink()
+            self.clear_caches()
+            project = new_project()
+            atomic_write(self.root / 'current.json', json_bytes(project))
+            self.cleanup_marker.unlink()
+            self.registry = {}
+            self.project = project
+            self._recovery_project = None
+            self.cleanup_pending = False
+            return {'project': copy.deepcopy(project), 'cleared': True, 'deleted_originals': deleted,
+                    'requires_restart': True, 'browser_cache': 'close_client_or_clear_site_cache'}
 
     def clear_caches(self):
         """Release owned decoded data after requests and analysis have stopped."""
@@ -518,6 +627,7 @@ class ProjectStore:
         Validation after appending results/audit also prevents writing a state
         which this same application would reject on the next startup.
         """
+        self._require_workspace_ready()
         validate_project(project, self.registry)
         previous = self.project
         self.project = project
@@ -530,7 +640,7 @@ class ProjectStore:
 
     def get_project(self):
         with self.lock:
-            return copy.deepcopy(self.project)
+            return copy.deepcopy(self._cleanup_project if self.cleanup_pending else self.project)
 
     def update_project(self, payload: dict):
         validate_project(payload, self.registry)
@@ -545,9 +655,18 @@ class ProjectStore:
 
     def reset(self, title='未命名图稿'):
         with self.lock:
+            if self.cleanup_pending:
+                raise WorkspaceCleanupPending('本机工作区清理尚未完成，请先重试清理。')
             project = new_project(title)
             _audit(project, 'new_project', project['title'])
-            return self._commit_project(project)
+            recovery = self._recovery_project
+            self._recovery_project = None
+            try:
+                result = self._commit_project(project)
+            except Exception:
+                self._recovery_project = recovery
+                raise
+            return result
 
     def public_asset(self, asset_id):
         if asset_id not in self.registry:
@@ -598,6 +717,8 @@ class ProjectStore:
         if not ID_RE.fullmatch(str(asset_id)):
             raise ValueError('Invalid asset id.')
         with self.lock:
+            if self.cleanup_pending:
+                raise WorkspaceCleanupPending('本机工作区清理尚未完成，请先重试清理。')
             record = self.registry.get(asset_id)
             if not record:
                 raise ValueError('Source asset not found.')
@@ -610,6 +731,7 @@ class ProjectStore:
             return path
 
     def _store_bytes(self, data: bytes, name: str, expected_id: str | None = None) -> dict:
+        self._require_workspace_ready()
         if not data or len(data) > MAX_FILE_BYTES:
             raise ValueError('Empty original or file exceeds 128 MB.')
         name = str(name).replace('\\', '/').split('/')[-1][:240]
@@ -627,7 +749,7 @@ class ProjectStore:
                 if hashlib.sha256(existing.read_bytes()).hexdigest() != digest:
                     raise ValueError('Stored original failed its SHA-256 verification.')
                 return self.public_asset(digest)
-        fd, temp_name = tempfile.mkstemp(suffix=suffix, dir=self.root)
+        fd, temp_name = tempfile.mkstemp(prefix='.import-', suffix=suffix, dir=self.root)
         try:
             with os.fdopen(fd, 'wb') as handle:
                 handle.write(data)
@@ -1041,5 +1163,6 @@ class ProjectStore:
                 'crop':{'x':0,'y':0,'width':asset['width_px'],'height':asset['height_px']},'rotation':0,'flip_h':False,'flip_v':False,
                 'display':{'low':None,'high':None,'gamma':1,'invert':False},
                 'gel':{'lane_centers':[],'lane_names':[],'marker_points':[],'marker_unit':'kDa','hidden_lanes':[]}}
+
 
 

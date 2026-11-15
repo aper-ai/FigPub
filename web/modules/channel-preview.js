@@ -9,7 +9,7 @@ function abortableDelay(milliseconds,signal) {
 export async function fetchChannelPreview(payload,signal,{fetcher=fetch,delay=abortableDelay,maxAttempts=4}={}) {
   for(let attempt=0;attempt<maxAttempts;attempt++) {
     if(signal?.aborted)throw new DOMException('Aborted','AbortError');
-    const response=await fetcher('/api/channel-view/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal});
+    const response=await fetcher('/api/channel-view/preview',{method:'POST',cache:'no-store',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal});
     if(response.ok)return response.blob();
     let message=await response.text();try{message=JSON.parse(message).detail || message;}catch{}
     if(response.status===429&&attempt<maxAttempts-1){const seconds=Number(response.headers.get('Retry-After'))||1;await delay(Math.max(500,Math.min(3000,seconds*1000+attempt*250)),signal);continue;}

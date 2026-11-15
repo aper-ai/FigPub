@@ -107,7 +107,7 @@ def verify_provenance(metadata, repository, expected_commit, expected_run_id):
             'Acceptance run ID or head SHA does not match the selected release source.')
     require(run.get('status') == 'completed' and run.get('conclusion') == 'success',
             'Acceptance run has not completed successfully.')
-    require(run.get('head_branch') == ACCEPTANCE_BRANCH and run.get('event') in {'push', 'workflow_dispatch'},
+    require(run.get('head_branch') == ACCEPTANCE_BRANCH and run.get('event') in {'push', 'workflow_dispatch', 'create'},
             'Acceptance run must originate on the designated development branch.')
     valid_paths = {ACCEPTANCE_WORKFLOW, f'{ACCEPTANCE_WORKFLOW}@{ACCEPTANCE_BRANCH}',
                    f'{ACCEPTANCE_WORKFLOW}@refs/heads/{ACCEPTANCE_BRANCH}'}
@@ -245,16 +245,12 @@ def release_notes(receipt):
 
 ## 本版改进
 
-- 修复分析提交阶段的连续点击竞态：首次异步保存前即锁定提交，界面明确显示准备或提交状态，避免重复创建任务。
-- 状态查询连续失败后保留后台任务身份，提供重试查询与取消入口；短暂通信失败不再使任务从界面消失。
-- 提交及运行期间限制项目替换，跨工作区仍可返回当前任务；完成、取消或明确失败后允许重新分析。
-- 分析、条带识别与 WB 图组生成的项目切换提示均关联对应任务；结束后清除旧阻塞提示，无关保存或分析错误继续保留。
-- 从其他数据表返回 qPCR 任务时，重新加载任务所属的原始工作表，避免标题与表格行来自不同素材；区域分析与重新分割入口也同步任务禁用状态。
-- 修复图像分析页的全局快捷键劫持：按钮、链接及其他原生控件的 Enter / Space 保持自身语义，画布平移和多边形快捷键继续可用。
-- 对话框取消、Escape 和遮罩关闭后恢复触发控件的焦点；切换项目或工作区时不强行移动焦点。
-- 新增真实浏览器任务生命周期回归，覆盖慢提交、连续点击、状态查询故障与恢复、取消、再次运行及键盘操作。
-- 保留完整工具包的科学分析与组图能力，并重新验证既有 WB、qPCR、多通道、IHC、纤维、实例编辑、保存、重开及导出流程。
-- 最终完整 ZIP 重新在新目录解压，执行包内两模型及原生客户端验收；发行附件采用这些已测试的原始字节。
+- 去除期刊尺寸、布局和对象属性中的重复“应用”按钮，参数修改后自动生效；连续输入保留光标和中文输入状态，并合并撤销记录。
+- 保存与导出前提交有效参数，无效草稿保留原图稿并提示修正；期刊默认编号仅在选择预设时设置，尺寸调整不覆盖用户编号样式。
+- 正式客户端使用运行文件白名单，不包含实验图片、案例工程、文档截图或测试数据；首次启动为空白工作区，历史自动保存需要明确选择恢复。
+- 增加工作区清理和失败重试，阻止清理期间的旧请求重新写入素材，并避免浏览器旧标签页恢复已经清除的数据。
+- 保留完整工具包的 WB、qPCR、多通道、IHC、纤维、Cellpose、实例编辑、工程重开与导出能力，并对同一候选提交重新执行数值、浏览器及原生客户端验收。
+- 最终完整 ZIP 在新目录解压后执行包内两模型及原生客户端验收；发行附件直接采用这些已测试的文件字节。
 
 ## 本次验收
 

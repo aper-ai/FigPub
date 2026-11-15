@@ -49,6 +49,14 @@ function beginGesture(event) {
     return;
   }
   const figureSvg = event.target.closest('#figure-svg'); if (!figureSvg||event.button!==0) return;
+  // Canvas gestures prevent the browser's normal focus transfer. Commit the
+  // focused inspector against its original selection before choosing another
+  // object, then release that input so deferred renders can show the new one.
+  const pendingInput=document.activeElement;
+  if(pendingInput?.matches?.('[data-pending-edit]')) {
+    pendingInput.dispatchEvent(new Event('change',{bubbles:true}));
+    pendingInput.blur();
+  }
   const panelElement=event.target.closest('[data-panel-id]'), annotationElement=event.target.closest('[data-annotation-id]');
   const selectionHandle=event.target.dataset.selectionHandle;
   if(!panelElement && !annotationElement && !selectionHandle) {

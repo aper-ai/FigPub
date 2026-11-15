@@ -52,6 +52,16 @@ def toolkit(tmp_path, monkeypatch):
         'workbench/cellpose_worker.py': (ROOT / 'workbench/cellpose_worker.py').read_bytes(),
         'packaging/windows_launcher.c': b'/* synthetic launcher source */\n',
         'resources/app.ico': b'synthetic icon bytes',
+        'resources/fonts/DejaVuSans.ttf': b'synthetic font bytes',
+        'licenses/Noto-CJK.txt': b'synthetic font license',
+        'web/index.html': b'<!doctype html><title>Synthetic application</title>',
+        'web/app.js': b'export const application = true;\n',
+        'web/data/ladders.json': b'{"reference": true}\n',
+        'docs/screenshots/0.6.1/wb-quantification.png': b'synthetic documentation screenshot',
+        'tests/fixtures/wb.png': b'synthetic test input',
+        'benchmarks/results.json': b'{"historical": true}\n',
+        'web/uploads/wb.tif': b'synthetic non-runtime input',
+        'workbench/workspace/project.json': b'{"synthetic_saved_project": true}\n',
         'package.json': full.json_bytes({'version': full.VERSION})}
     for name, content in sources.items():
         target = project / name
@@ -118,7 +128,9 @@ def test_complete_assembly_preserves_isolation_and_acceptance_extracts_the_deliv
     for model in ('cyto3', 'nucleitorch_0'):
         assert (directory / 'cellpose/models' / model).read_bytes() == (toolkit['component'] / 'cellpose/models' / model).read_bytes()
     source = directory.parent / full.SOURCE_DIRECTORY
-    assert full.assert_matching_source(directory / 'app', source) == record['source_files']
+    assert full.assert_application_matches_source(directory / 'app', source) == record['application_source_files']
+    assert record['runtime_source_matches_source_release'] is True
+    assert len(full.directory_records(source)) == record['source_files']
     receipt = extract(toolkit)
     installed = toolkit['destination'] / full.WINDOWS_DIRECTORY
     assert installed != directory and full.directory_records(installed) == full.directory_records(directory)
@@ -127,6 +139,81 @@ def test_complete_assembly_preserves_isolation_and_acceptance_extracts_the_deliv
     assert receipt['extracted_from_final_archive'] is True
     assert binding['manifest_sha256'] == record['full_toolkit_manifest_sha256']
     assert binding['cellpose_component_manifest_sha256'] == toolkit['component_record']['source_manifest_sha256']
+
+
+def test_windows_client_excludes_development_images_and_saved_data_but_keeps_runtime_assets(toolkit):
+    directory = toolkit['directory']
+    source = directory.parent / full.SOURCE_DIRECTORY
+    excluded = ('docs/screenshots/0.6.1/wb-quantification.png', 'tests/fixtures/wb.png',
+        'benchmarks/results.json', 'packaging/windows_launcher.c', 'web/uploads/wb.tif',
+        'workbench/workspace/project.json')
+    retained = ('resources/app.ico', 'resources/fonts/DejaVuSans.ttf', 'licenses/Noto-CJK.txt',
+        'web/index.html', 'web/app.js', 'web/data/ladders.json', 'run.py', 'workbench/cellpose_worker.py')
+    with ZipFile(toolkit['archive']) as client, ZipFile(directory.parent / full.SOURCE) as developer:
+        client_names, source_names = set(client.namelist()), set(developer.namelist())
+        for name in excluded:
+            assert full.WINDOWS_DIRECTORY + '/app/' + name not in client_names
+            assert not (directory / 'app' / name).exists()
+            assert full.SOURCE_DIRECTORY + '/' + name in source_names
+            assert (source / name).read_bytes() == (toolkit['source'] / name).read_bytes()
+        for name in retained:
+            assert client.read(full.WINDOWS_DIRECTORY + '/app/' + name) == developer.read(full.SOURCE_DIRECTORY + '/' + name)
+        for name in ('cyto3', 'nucleitorch_0'):
+            assert client.read(full.WINDOWS_DIRECTORY + '/cellpose/models/' + name)
+    app_manifest = json.loads((directory / 'app' / full.SOURCE_MANIFEST).read_text('utf-8'))
+    source_manifest = json.loads((source / full.SOURCE_MANIFEST).read_text('utf-8'))
+    assert app_manifest['scope'] == 'runtime' and source_manifest['scope'] == 'developer_source'
+    assert app_manifest['file_count'] < source_manifest['file_count']
+    assert full.sha256(source / full.SOURCE_MANIFEST) == toolkit['record']['source_archive_snapshot_sha256']
+
+
+@pytest.mark.parametrize('change', ['change', 'remove'])
+def test_runtime_subset_binding_rejects_changed_or_omitted_runtime_source(toolkit, change):
+    app = toolkit['directory'] / 'app'
+    source = toolkit['directory'].parent / full.SOURCE_DIRECTORY
+    if change == 'change':
+        (app / 'run.py').write_text('# changed runtime source\n')
+    else:
+        (app / 'run.py').unlink()
+    with pytest.raises(ValueError, match='source release'):
+        full.assert_application_matches_source(app, source)
+
+
+@pytest.mark.parametrize('name', [
+    'app/docs/screenshots/wb.png', 'app/web/uploads/wb.tif', 'app/web/workspace.json',
+    'app/resources/demo.png', 'app/workbench/workspace/project.json', 'workspace/project.json',
+])
+def test_rehashed_manifests_cannot_authorize_images_or_workspace_data_in_final_zip(toolkit, name):
+    directory = toolkit['directory']
+    added = directory / name
+    added.parent.mkdir(parents=True, exist_ok=True)
+    added.write_bytes(b'synthetic forbidden payload')
+    if name.startswith('app/'):
+        inner_path = directory / 'app' / full.SOURCE_MANIFEST
+        inner = json.loads(inner_path.read_text('utf-8'))
+        refresh_file_record(inner, directory / 'app', name.removeprefix('app/'))
+        json_file(inner_path, inner)
+    outer_path = directory / full.MANIFEST
+    outer = json.loads(outer_path.read_text('utf-8'))
+    refresh_file_record(outer, directory, name)
+    refresh_file_record(outer, directory, 'app/' + full.SOURCE_MANIFEST)
+    outer['source_snapshot_sha256'] = full.sha256(directory / 'app' / full.SOURCE_MANIFEST)
+    json_file(outer_path, outer)
+    with pytest.raises(ValueError, match='payload contains'):
+        full.verify_full_directory(directory)
+    # Re-sign both manifests and the build record: a consistent hash inventory
+    # is deliberately insufficient to admit non-runtime data into a release.
+    with ZipFile(toolkit['archive'], 'w', compression=ZIP_DEFLATED) as archive:
+        for path in sorted(directory.rglob('*')):
+            if path.is_file():
+                archive.write(path, full.WINDOWS_DIRECTORY + '/' + path.relative_to(directory).as_posix())
+    record = copy.deepcopy(toolkit['record'])
+    record['archives'] = [full.archive_identity(toolkit['archive']) if item['file'] == full.FULL else item
+                          for item in record['archives']]
+    record['full_toolkit_manifest_sha256'] = full.sha256(outer_path)
+    with pytest.raises(ValueError, match='payload contains'):
+        full.verify_full_archive(toolkit['archive'], record, destination=toolkit['destination'])
+    assert not toolkit['destination'].exists()
 
 
 @pytest.mark.parametrize('name', ['FigureWorkbench.exe', 'runtime/python312.dll',

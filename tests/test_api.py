@@ -117,21 +117,19 @@ def test_job_api_results_and_cancel(tmp_path):
         assert client.get('/api/jobs/no-such-job').status_code==404
 
 
-def test_demo_is_explicit_synthetic_and_multisource(tmp_path):
+def test_production_starts_without_experimental_materials_or_demo_endpoint(tmp_path):
     with TestClient(create_app(tmp_path)) as client:
         response=client.post('/api/demo')
-        assert response.status_code==200,response.text
-        project=response.json()
-        assert project['settings']['synthetic_demo']
-        assert len(project['assets'])==3 and len(project['panels'])==2
-        assert all('DEMO_' in asset['name'] for asset in project['assets'])
-        assert any('SYNTHETIC' in annotation['text'] for annotation in project['annotations'])
+        assert response.status_code==404,response.text
+        project=client.get('/api/project').json()
+        assert project['assets']==[] and project['panels']==[]
+        assert not client.get('/api/workspace/status').json()['has_recovery']
 
 
 def test_real_qpcr_to_chart_and_portable_provenance(tmp_path):
     """Actual analysis -> SVG asset -> reopen retains original table and recipe."""
     with TestClient(create_app(tmp_path)) as client:
-        project=client.post('/api/demo').json()
+        project=client.app.state.store.demo()  # Internal deterministic test fixture, never a production API.
         table=next(asset for asset in project['assets'] if asset['kind']=='table')
         job=client.post('/api/jobs',json={'kind':'qpcr','params':{'asset_id':table['id'],'reference_gene':'ACTB','control_group':'Control','method':'delta_delta_ct'}}).json()
         for _ in range(500):
@@ -157,7 +155,7 @@ def test_real_qpcr_to_chart_and_portable_provenance(tmp_path):
 
 def test_readonly_raw_wb_and_nuclei_jobs_and_errors(tmp_path):
     with TestClient(create_app(tmp_path)) as client:
-        project=client.post('/api/demo').json()
+        project=client.app.state.store.demo()  # Internal deterministic test fixture, never a production API.
         gel=next(asset for asset in project['assets'] if 'gel_' in asset['name'])
         nuclei=next(asset for asset in project['assets'] if 'nuclei' in asset['name'])
         rois=[]
@@ -198,7 +196,7 @@ def test_static_font_routes_and_self_exported_svg_reimport(tmp_path):
         assert client.get('/gel-worker.js').status_code==200
         assert client.get('/fonts/DejaVuSans.ttf').status_code==200
         assert client.get('/fonts/not-allowed.ttf').status_code==404
-        project=client.post('/api/demo').json()
+        project=client.app.state.store.demo()  # Internal deterministic test fixture, never a production API.
         exported=client.post('/api/export',json={'format':'svg','dpi':300})
         assert exported.status_code==200,exported.text[:500]
         assert b'@font-face' in exported.content

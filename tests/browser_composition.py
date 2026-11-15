@@ -28,23 +28,28 @@ from run import reserve_port
 from workbench.server import create_app
 
 
+def start_server(directory):
+    listener = reserve_port(0)
+    port = listener.getsockname()[1]
+    server = uvicorn.Server(uvicorn.Config(create_app(directory), host='127.0.0.1', port=port, log_level='error'))
+    thread = threading.Thread(target=lambda: server.run(sockets=[listener]), daemon=True)
+    thread.start()
+    for _ in range(200):
+        if server.started:
+            return server, thread, f'http://127.0.0.1:{port}'
+        time.sleep(.025)
+    server.should_exit = True
+    thread.join(timeout=10)
+    listener.close()
+    raise RuntimeError('Test server did not become ready')
+
+
 def main():
     output = Path(os.environ.get('FW_BROWSER_RESULTS', ROOT / 'test-results/composition'))
     output.mkdir(parents=True, exist_ok=True)
     report = {'synthetic_data': True, 'scenarios': [], 'browser_errors': [], 'passed': False}
     with tempfile.TemporaryDirectory(prefix='figure-composition-') as directory:
-        listener = reserve_port(0)
-        port = listener.getsockname()[1]
-        base = f'http://127.0.0.1:{port}'
-        server = uvicorn.Server(uvicorn.Config(create_app(directory), host='127.0.0.1', port=port, log_level='error'))
-        thread = threading.Thread(target=lambda: server.run(sockets=[listener]), daemon=True)
-        thread.start()
-        for _ in range(200):
-            if server.started:
-                break
-            time.sleep(.025)
-        if not server.started:
-            raise RuntimeError('Test server did not become ready')
+        server, thread, base = start_server(directory)
         try:
             with sync_playwright() as playwright:
                 options = {'headless': True}
@@ -97,6 +102,31 @@ def main():
                     assert state_value('state.project.settings.composition.layout.rows') == 2
                     passed('six-file import composes one batch and applies an explicit three-column grid')
 
+                    assert page.locator('[data-action="apply-journal-preset"], [data-action="apply-layout"]').count() == 0
+                    before = state_value('JSON.stringify(state.project.panels)')
+                    history = state_value('state.history.length')
+                    change('#layout-gap_x_mm', '11.125')
+                    wait_state('state.project.settings.composition.layout.gap_x_mm===11.125')
+                    adjusted = state_value('JSON.stringify(state.project.panels)')
+                    assert adjusted != before
+                    assert state_value('state.history.length') == history + 1
+                    click('undo')
+                    assert state_value('JSON.stringify(state.project.panels)') == before
+                    redo_count = state_value('state.future.length')
+                    change('#layout-gap_x_mm', '3')
+                    assert state_value('state.history.length') == history
+                    assert state_value('state.future.length') == redo_count
+                    click('redo')
+                    assert state_value('JSON.stringify(state.project.panels)') == adjusted
+                    change('#layout-columns', '')
+                    page.locator('.toast.error').last.wait_for()
+                    assert page.locator('#layout-columns').input_value() == '3'
+                    assert state_value('JSON.stringify(state.project.panels)') == adjusted
+                    assert state_value('state.history.length') == history + 1
+                    click('undo')
+                    assert state_value('JSON.stringify(state.project.panels)') == before
+                    passed('layout numeric edits apply on blur, preserve redo on no-op and reject invalid drafts atomically')
+
                     page.locator('.figure-panel').nth(0).click()
                     wait_state('state.selectedPanelIds.length===1 && state.selectedPanelId===state.project.panels[0].id')
                     history = state_value('state.history.length')
@@ -104,6 +134,22 @@ def main():
                     assert state_value('state.history.length') == history
                     change('#panel-label', 'Control')
                     assert state_value('state.project.panels[0].label_mode') == 'manual'
+                    original_x = state_value('state.project.panels[0].x_mm')
+                    other_x = state_value('state.project.panels[1].x_mm')
+                    history = state_value('state.history.length')
+                    page.locator('#panel-x_mm').fill(str(original_x + 1))
+                    # The SVG pointerdown prevents native blur. It must commit
+                    # the inspector against panel A before selecting panel B.
+                    page.locator('.figure-panel').nth(1).click()
+                    wait_state(f'state.selectedPanelId===state.project.panels[1].id && Math.abs(state.project.panels[0].x_mm-({original_x + 1}))<.000001')
+                    assert state_value('state.project.panels[1].x_mm') == other_x
+                    assert state_value('state.history.length') == history + 1
+                    assert not page.locator('[data-pending-edit]').count()
+                    click('undo')
+                    assert state_value('state.project.panels[0].x_mm') == original_x
+                    assert state_value('state.project.panels[1].x_mm') == other_x
+                    page.locator('.figure-panel').nth(0).click()
+                    passed('a pending inspector edit commits to its original panel before canvas selection changes')
                     before = state_value('JSON.stringify(state.project.panels)')
                     history = state_value('state.history.length')
                     click('composition-inspector', '[data-view="layout"]')
@@ -143,9 +189,11 @@ def main():
                     passed('a group moves and scales together, with one-step gesture undo')
 
                     click('composition-inspector', '[data-view="layout"]')
+                    assert page.locator('[data-action="apply-journal-preset"], [data-action="apply-layout"]').count() == 0
+                    history = state_value('state.history.length')
                     page.locator('#journal-preset').select_option('nature-single')
-                    click('apply-journal-preset')
                     wait_state('state.project.figure.width_mm===89')
+                    assert state_value('state.history.length') == history + 1
                     assert state_value('state.project.panels[0].label') == 'Control'
                     assert state_value('state.project.settings.composition.journal_preset_id') == 'nature-single'
                     wait_state('!state.dirty && state.saveState==="saved"')
@@ -155,6 +203,24 @@ def main():
                     assert state_value('state.project.panels[0].label') == 'Control'
                     assert state_value('!!state.project.panels[0].group_id')
                     passed('journal adaptation, manual captions and groups survive automatic save and reload')
+
+                    server.should_exit = True
+                    thread.join(timeout=10)
+                    assert not thread.is_alive(), 'Previous server did not exit before recovery acceptance'
+                    server, thread, base = start_server(directory)
+                    page.goto(base, wait_until='networkidle')
+                    wait_state('state.modal?.type==="workspace-recovery" && state.workspaceStatus?.has_recovery')
+                    assert state_value('state.project.assets.length') == 0
+                    assert state_value('state.project.panels.length') == 0
+                    assert page.locator('.asset-thumb img').count() == 0
+                    click('restore-workspace')
+                    wait_state('!state.busy && !state.modal && !state.workspaceStatus.has_recovery && state.project.panels.length===6')
+                    click('tab', '[data-tab="compose"]')
+                    assert state_value('state.project.figure.width_mm') == 89
+                    assert state_value('state.project.settings.composition.journal_preset_id') == 'nature-single'
+                    assert state_value('state.project.panels[0].label') == 'Control'
+                    assert state_value('!!state.project.panels[0].group_id')
+                    passed('server restart exposes no source images until explicit recovery restores the saved composition')
 
                     with page.expect_download() as pending:
                         click('save-project')

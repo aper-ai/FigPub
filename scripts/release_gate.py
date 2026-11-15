@@ -14,8 +14,8 @@ import sys
 import xml.etree.ElementTree as ET
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from scripts.run_acceptance import REPORT_NAMES, SUITES, source_identity, verified_scenarios
-from scripts.release_config import VERSION, FULL
+from scripts.run_acceptance import REPORT_NAMES, SUITES, OFFLINE_SUITES, source_identity, verified_scenarios
+from scripts.release_config import VERSION, FULL, BROWSER, NATIVE_REQUIRED_SCENARIOS
 from scripts.model_acceptance import verified_official_model_cases
 
 
@@ -76,6 +76,7 @@ def evaluate(reports: Path, expected_commit: str) -> dict:
         problems.append('Every real browser workflow suite must pass with nonempty scenario evidence.')
     if browser.get('source') != current:
         problems.append('Browser results belong to a different source snapshot.')
+    offline_artifacts = []
     for item in suites:
         suite = item.get('suite')
         if suite not in SUITES:
@@ -86,17 +87,28 @@ def evaluate(reports: Path, expected_commit: str) -> dict:
         if (not verified_scenarios(evidence) or not path.is_file()
                 or item.get('evidence_sha256') != hashlib.sha256(path.read_bytes()).hexdigest()):
             problems.append(f'Browser scenario evidence is missing, failed or changed: {suite}')
-        if suite == 'test_browser_studio_ui.py':
+        if suite in OFFLINE_SUITES:
             size = evidence.get('html_bytes')
-            if (not re.fullmatch('[a-f0-9]{64}', str(evidence.get('html_sha256', '')))
+            if (evidence.get('entry') != BROWSER or evidence.get('real_browser') is not True
+                    or not re.fullmatch('[a-f0-9]{64}', str(evidence.get('html_sha256', '')))
                     or not isinstance(size, int) or isinstance(size, bool) or size <= 0):
-                problems.append('Offline browser evidence must identify the exact tested HTML artifact.')
+                problems.append(f'Offline browser evidence must identify the exact tested HTML artifact: {suite}')
+            else:
+                offline_artifacts.append((evidence['entry'], size, evidence['html_sha256']))
+    if len(offline_artifacts) != len(OFFLINE_SUITES) or len(set(offline_artifacts)) != 1:
+        problems.append('Both standalone browser suites must test the same final HTML artifact.')
 
     native = load('desktop/native-acceptance.json')
     if (native.get('passed') is not True or native.get('platform') != 'win32'
             or native.get('native_window_verified') is not True or native.get('backend_stopped') is not True
             or not verified_scenarios(native)):
         problems.append('Native Windows window, operations, and backend shutdown must be verified.')
+    native_scenarios = native.get('scenarios', [])
+    native_names = ([item.get('name') for item in native_scenarios if isinstance(item, dict)]
+                    if isinstance(native_scenarios, list) else [])
+    if any(native_names.count(name) != 1 for name in NATIVE_REQUIRED_SCENARIOS):
+        problems.append('Native Windows acceptance must execute startup, automatic parameters, explicit recovery, '
+                        'workspace clearing and cleared-workspace restart exactly once.')
     if native.get('source_commit') != expected_commit:
         problems.append('Native Windows evidence belongs to a different commit.')
     if native.get('source_identity') != current:

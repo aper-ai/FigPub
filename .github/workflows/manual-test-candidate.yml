@@ -1,0 +1,213 @@
+name: Build Windows candidate for manual testing
+
+# This separate path produces a prerelease for the owner's own testing.
+# It does not run or replace the validated-release acceptance workflow.
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/manual-test-candidate.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manual-test-candidate-v0.6.2-rc.1
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      PYTHONUTF8: '1'
+      MPLBACKEND: Agg
+      CANDIDATE_TAG: v0.6.2-rc.1
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12.10'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+
+      - name: Require an unused candidate tag and release
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const tag = process.env.CANDIDATE_TAG;
+            const releases = await github.paginate(github.rest.repos.listReleases, {...context.repo, per_page: 100});
+            if (releases.some(release => release.tag_name === tag))
+              throw new Error(`Candidate ${tag} already exists; it will not be overwritten.`);
+            let existing;
+            try { existing = await github.rest.git.getRef({...context.repo, ref: `tags/${tag}`}); }
+            catch (error) { if (error.status !== 404) throw error; }
+            if (existing) throw new Error(`Tag ${tag} already exists; it will not be moved.`);
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install -r requirements.txt -r requirements-desktop.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Application dependency installation failed.' }
+          python -m pip install ziglang==0.15.2
+          if ($LASTEXITCODE -ne 0) { throw 'Launcher compiler installation failed.' }
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw 'Frontend dependency installation failed.' }
+
+      - name: Prepare isolated Cellpose CPU dependencies and pinned official weights
+        run: python scripts/prepare_cellpose_acceptance.py --output .ci-cellpose --record .ci-manual-test/model-environment.json
+
+      - name: Fetch the pinned Windows runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download build-runtime-0.4.0 --repo "$env:GITHUB_REPOSITORY" --pattern Figure_Workbench_0.4.0_Windows_Main.zip --dir .ci-input
+
+      - name: Assemble the portable nuclei and cyto3 component
+        run: python packaging/build_cellpose_candidate.py --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --environment .ci-cellpose --output dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --record .ci-manual-test/portable-cellpose-build.json
+
+      - name: Build standalone browser candidate
+        run: npm run build:browser
+
+      - name: Build the native launcher and complete Windows package
+        run: |
+          python packaging/fetch_desktop_dependencies.py --output .ci-desktop-wheels
+          if ($LASTEXITCODE -ne 0) { throw 'Desktop dependency preparation failed.' }
+          $zigPath = python -c "import ziglang; from pathlib import Path; print(Path(ziglang.__file__).parent / 'zig.exe')"
+          if ($LASTEXITCODE -ne 0) { throw 'Pinned launcher compiler is unavailable.' }
+          python packaging/build_desktop_launcher.py --zig "$zigPath" --output .ci-input/FigureWorkbench.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Native launcher compilation failed.' }
+          python packaging/build_windows_full.py build --base-main .ci-input/Figure_Workbench_0.4.0_Windows_Main.zip --launcher .ci-input/FigureWorkbench.exe --desktop-wheels .ci-desktop-wheels --component dist/Figure_Workbench_0.6.2_Cellpose_CPU_Windows_x64 --component-record .ci-manual-test/portable-cellpose-build.json --output dist/Figure_Workbench_0.6.2_Windows_x64 --record .ci-manual-test/windows-build.json
+          if ($LASTEXITCODE -ne 0) { throw 'Complete toolkit assembly failed.' }
+
+      - name: Record manual-test status and download checksums
+        run: |
+          @'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          output = Path('.ci-manual-test')
+          build = json.loads((output / 'windows-build.json').read_text('utf-8'))
+          assert build['source_identity']['commit'] == os.environ['GITHUB_SHA']
+          assert build['source_identity']['clean'] is True
+          assert build['windows_runtime_executed'] is False and build['release_gate_passed'] is False
+          files = [Path('dist') / ('Figure_Workbench_0.6.2_' + suffix) for suffix in
+                   ('Windows_Full.zip', 'Source.zip', 'Browser.html')]
+          assets = []
+          for path in files:
+              with path.open('rb') as stream:
+                  digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+              assets.append({'name': path.name, 'bytes': path.stat().st_size, 'sha256': digest})
+          receipt = {'tag': os.environ['CANDIDATE_TAG'], 'source_commit': os.environ['GITHUB_SHA'],
+                     'status': 'manual_testing_pending', 'windows_native_acceptance_passed': False,
+                     'packaged_model_inference_executed': False, 'release_gate_passed': False,
+                     'build': build, 'assets': assets}
+          (output / 'MANUAL_TEST_BUILD.json').write_text(json.dumps(receipt, ensure_ascii=False, indent=2) + '\n', 'utf-8')
+          (output / 'SHA256SUMS').write_text(''.join(f"{item['sha256']}  {item['name']}\n" for item in assets), 'utf-8')
+          notes = '''## Windows 手动测试候选版
+
+          此版本按维护者要求先提供下载，由用户自行测试。应用版本为 0.6.2，发行标签为 v0.6.2-rc.1。
+
+          完整包内置 Windows 客户端、独立运行环境及 Cellpose CPU 的 nuclei、cyto3 官方模型。解压 Windows_Full.zip 后运行 FigureWorkbench.exe，系统需有 WebView2 Runtime。Source.zip 为同提交源码；Browser.html 为独立浏览器组图版。
+
+          本工作流只构建并核对文件、依赖、模型摘要和源码一致性；没有执行本候选包的 Windows 原生界面验收、完整工作流验收或包内两种模型的实际推理验收。它不是已通过完整验收的正式版本。此前 0.6.1 的验收记录不代表本候选版已通过。
+
+          包内保留待验收标记。MANUAL_TEST_BUILD.json 记录实际构建状态，SHA256SUMS 提供三个下载文件的校验和。
+          '''
+          notes += '\n源码提交：' + os.environ['GITHUB_SHA'] + '\n'
+          (output / 'RELEASE_NOTES.md').write_text(notes, 'utf-8')
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate metadata preparation failed.' }
+
+      - name: Retain packages for manual testing
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-test-candidate-${{ github.sha }}
+          compression-level: 0
+          path: |
+            dist/Figure_Workbench_0.6.2_Windows_Full.zip
+            dist/Figure_Workbench_0.6.2_Source.zip
+            dist/Figure_Workbench_0.6.2_Browser.html
+            .ci-manual-test/MANUAL_TEST_BUILD.json
+            .ci-manual-test/SHA256SUMS
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload a draft prerelease and verify the received files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          @'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+          import subprocess
+          import re
+          import time
+
+          repository, tag = os.environ['GITHUB_REPOSITORY'], os.environ['CANDIDATE_TAG']
+          output = Path('.ci-manual-test')
+          paths = [Path('dist') / ('Figure_Workbench_0.6.2_' + suffix) for suffix in
+                   ('Windows_Full.zip', 'Source.zip', 'Browser.html')]
+          paths += [output / 'MANUAL_TEST_BUILD.json', output / 'SHA256SUMS']
+          subprocess.run(['gh', 'release', 'create', tag, '--repo', repository,
+                          '--target', os.environ['GITHUB_SHA'], '--draft', '--prerelease', '--latest=false',
+                          '--title', 'Figure Workbench 0.6.2 RC1 · Windows 手动测试版',
+                          '--notes-file', str(output / 'RELEASE_NOTES.md'), *map(str, paths)], check=True)
+          releases = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/releases?per_page=100'], text=True))
+          matches = [item for item in releases if item['tag_name'] == tag]
+          assert len(matches) == 1
+          release = matches[0]
+          release_id = release['id']
+          for attempt in range(6):
+              release = json.loads(subprocess.check_output(
+                  ['gh', 'api', f'repos/{repository}/releases/{release_id}'], text=True))
+              assets = release.get('assets', [])
+              if len(assets) == len(paths) and all(
+                      item.get('state') == 'uploaded'
+                      and isinstance(item.get('digest'), str)
+                      and re.fullmatch(r'sha256:[a-f0-9]{64}', item['digest'])
+                      for item in assets):
+                  break
+              if attempt < 5:
+                  time.sleep(5)
+          assert release['draft'] and release['prerelease'] and release['target_commitish'] == os.environ['GITHUB_SHA']
+          remote = {item['name']: item for item in release['assets']}
+          assert set(remote) == {path.name for path in paths}
+          for path in paths:
+              with path.open('rb') as stream:
+                  digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+              item = remote[path.name]
+              assert item['state'] == 'uploaded' and item['size'] == path.stat().st_size
+              assert item['digest'] == 'sha256:' + digest
+          subprocess.run(['gh', 'release', 'edit', tag, '--repo', repository,
+                          '--draft=false', '--prerelease', '--latest=false'], check=True)
+          published = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/releases/tags/{tag}'], text=True))
+          reference = json.loads(subprocess.check_output(['gh', 'api', f'repos/{repository}/git/ref/tags/{tag}'], text=True))
+          assert not published['draft'] and published['prerelease']
+          assert reference['object']['type'] == 'commit' and reference['object']['sha'] == os.environ['GITHUB_SHA']
+          (output / 'published-prerelease.json').write_text(json.dumps(published, ensure_ascii=False, indent=2) + '\n', 'utf-8')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as summary:
+              summary.write('Manual-test candidate (full acceptance pending): ' + published['html_url'] + '\n')
+          '@ | python -
+          if ($LASTEXITCODE -ne 0) { throw 'Candidate upload or publication verification failed.' }
+
+      - name: Retain build records including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: manual-test-build-records-${{ github.sha }}
+          path: .ci-manual-test/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 30

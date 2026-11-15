@@ -19,7 +19,8 @@ def evidence(tmp_path, monkeypatch):
             'suites': [{'suite': suite, 'passed': True} for suite in release_gate.SUITES]},
         'desktop/native-acceptance.json': {'passed': True, 'platform': 'win32', 'native_window_verified': True,
             'cellpose_component_manifest_sha256': '1' * 64,
-            'backend_stopped': True, 'source_commit': identity['commit'], 'scenarios': [{'passed': True}],
+            'backend_stopped': True, 'source_commit': identity['commit'],
+            'scenarios': [{'name': name, 'passed': True} for name in sorted(release_gate.NATIVE_REQUIRED_SCENARIOS)],
             'tested_application_sha256': 'c' * 64, 'source_snapshot_sha256': 'e' * 64, 'source_identity': identity},
         'windows-build.json': {'native_launcher': {'sha256': 'c' * 64},
                               'source_snapshot_sha256': 'e' * 64, 'source_identity': identity,
@@ -55,8 +56,8 @@ def evidence(tmp_path, monkeypatch):
     for item in data['acceptance/browser-acceptance.json']['suites']:
         name = f"acceptance/{release_gate.Path(item['suite']).stem}/{release_gate.REPORT_NAMES.get(item['suite'], 'browser-report.json')}"
         value = {'passed': True, 'scenarios': [{'name': 'actual scenario', 'passed': True}]}
-        if item['suite'] == 'test_browser_studio_ui.py':
-            value.update(html_sha256='3' * 64, html_bytes=1234)
+        if item['suite'] in release_gate.OFFLINE_SUITES:
+            value.update(entry=release_gate.BROWSER, real_browser=True, html_sha256='3' * 64, html_bytes=1234)
         data[name] = value
         item['evidence_sha256'] = hashlib.sha256(json.dumps(value).encode()).hexdigest()
     for name, value in data.items():
@@ -122,6 +123,24 @@ def test_failed_native_scenario_blocks_even_when_summary_claims_pass(evidence):
     assert any('Native Windows window' in item for item in result['blockers'])
 
 
+@pytest.mark.parametrize('scenario', sorted(release_gate.NATIVE_REQUIRED_SCENARIOS))
+@pytest.mark.parametrize('failure', ['missing', 'duplicate', 'failed'])
+def test_current_native_behaviors_cannot_be_omitted_or_replaced(evidence, scenario, failure):
+    path, identity, data = evidence
+    native = data['desktop/native-acceptance.json']
+    selected = next(item for item in native['scenarios'] if item['name'] == scenario)
+    if failure == 'missing':
+        native['scenarios'].remove(selected)
+    elif failure == 'duplicate':
+        native['scenarios'].append(dict(selected))
+    else:
+        selected['passed'] = False
+    (path / 'desktop/native-acceptance.json').write_text(json.dumps(native))
+    result = release_gate.evaluate(path, identity['commit'])
+    assert not result['passed']
+    assert any('Native Windows' in item for item in result['blockers'])
+
+
 def test_changed_or_failed_browser_detail_blocks_summary_only_success(evidence):
     path, identity, data = evidence
     name = next(name for name in data if name.startswith('acceptance/browser_workflow/'))
@@ -184,18 +203,57 @@ def test_frontend_summary_cannot_hide_failed_or_changed_test_detail(evidence):
     assert any('Frontend evidence' in item for item in result['blockers'])
 
 
-def test_offline_browser_report_without_delivered_artifact_identity_is_blocked(evidence):
+@pytest.mark.parametrize('suite', ['test_browser_studio_ui.py', 'browser_auto_apply.py'])
+def test_offline_browser_report_without_delivered_artifact_identity_is_blocked(evidence, suite):
     path, identity, data = evidence
-    name = 'acceptance/test_browser_studio_ui/report.json'
+    name = f'acceptance/{release_gate.Path(suite).stem}/report.json'
     del data[name]['html_sha256']
     encoded = json.dumps(data[name]).encode()
     (path / name).write_bytes(encoded)
     browser = data['acceptance/browser-acceptance.json']
-    next(item for item in browser['suites'] if item['suite'] == 'test_browser_studio_ui.py')['evidence_sha256'] = hashlib.sha256(encoded).hexdigest()
+    next(item for item in browser['suites'] if item['suite'] == suite)['evidence_sha256'] = hashlib.sha256(encoded).hexdigest()
     (path / 'acceptance/browser-acceptance.json').write_text(json.dumps(browser))
     result = release_gate.evaluate(path, identity['commit'])
     assert not result['passed']
     assert any('exact tested HTML artifact' in item for item in result['blockers'])
+
+
+@pytest.mark.parametrize('failure', ['omitted', 'missing-report', 'failed-scenario'])
+def test_real_auto_apply_suite_cannot_be_omitted_or_replaced_by_success_summary(evidence, failure):
+    path, identity, data = evidence
+    suite = 'browser_auto_apply.py'
+    assert suite in release_gate.SUITES
+    browser = data['acceptance/browser-acceptance.json']
+    report_name = 'acceptance/browser_auto_apply/report.json'
+    if failure == 'omitted':
+        browser['suites'] = [item for item in browser['suites'] if item['suite'] != suite]
+    elif failure == 'missing-report':
+        (path / report_name).unlink()
+    else:
+        report = data[report_name]
+        report['scenarios'][0]['passed'] = False
+        encoded = json.dumps(report).encode()
+        (path / report_name).write_bytes(encoded)
+        next(item for item in browser['suites'] if item['suite'] == suite)['evidence_sha256'] = hashlib.sha256(encoded).hexdigest()
+    (path / 'acceptance/browser-acceptance.json').write_text(json.dumps(browser))
+    result = release_gate.evaluate(path, identity['commit'])
+    assert not result['passed']
+    assert any('browser' in item.lower() for item in result['blockers'])
+
+
+@pytest.mark.parametrize(('field', 'value'), [('html_sha256', 'f' * 64), ('html_bytes', 1235)])
+def test_standalone_suites_cannot_test_different_html_builds(evidence, field, value):
+    path, identity, data = evidence
+    name = 'acceptance/browser_auto_apply/report.json'
+    data[name][field] = value
+    encoded = json.dumps(data[name]).encode()
+    (path / name).write_bytes(encoded)
+    browser = data['acceptance/browser-acceptance.json']
+    next(item for item in browser['suites'] if item['suite'] == 'browser_auto_apply.py')['evidence_sha256'] = hashlib.sha256(encoded).hexdigest()
+    (path / 'acceptance/browser-acceptance.json').write_text(json.dumps(browser))
+    result = release_gate.evaluate(path, identity['commit'])
+    assert not result['passed']
+    assert any('same final HTML artifact' in item for item in result['blockers'])
 
 
 @pytest.mark.parametrize(('report_name', 'field', 'value'), [

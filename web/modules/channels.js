@@ -4,8 +4,15 @@ import {clone,defaultEdit,panelFromAsset,round} from './domain.js';
 import {descriptorKey,sourceIdentityKey,channelFieldPatch,channelPaneViews,channelViewSignature,compositionView,compositionInitialSource,viewAtSourcePlane} from './channel-domain.js';
 import {ChannelPreviewCache,fetchChannelPreview} from './channel-preview.js';
 
-const descriptorRequests=new Map();
+const descriptorRequests=new Map(),descriptorControllers=new Map();
+let workspaceGeneration=0;
 export const channelPreviews=new ChannelPreviewCache({onChange:emit,fetcher:fetchChannelPreview});
+
+export function clearChannelWorkspace() {
+  workspaceGeneration++;for(const controller of descriptorControllers.values())controller.abort();
+  descriptorRequests.clear();descriptorControllers.clear();channelPreviews.clear();
+  state.channelDescriptors.clear();state.channelDescriptorErrors.clear();
+}
 
 export function descriptorEntry(source) {
   const key=descriptorKey(source);
@@ -16,7 +23,11 @@ export async function loadChannelDescriptor(source,{retry=false}={}) {
   if(!retry&&state.channelDescriptors.has(key))return state.channelDescriptors.get(key);
   if(descriptorRequests.has(key))return descriptorRequests.get(key);
   state.channelDescriptorErrors.delete(key);
-  const promise=request(`/api/assets/${encodeURIComponent(source.asset_id)}/channels?series=${source.series || 0}&frame=${source.frame || 0}`).then(data=>{state.channelDescriptors.set(key,data);return data;}).catch(error=>{state.channelDescriptorErrors.set(key,error.message);throw error;}).finally(()=>{descriptorRequests.delete(key);emit();});
+  const generation=workspaceGeneration,controller=new AbortController();descriptorControllers.set(key,controller);
+  const promise=request(`/api/assets/${encodeURIComponent(source.asset_id)}/channels?series=${source.series || 0}&frame=${source.frame || 0}`,{signal:controller.signal})
+    .then(data=>{if(generation===workspaceGeneration)state.channelDescriptors.set(key,data);return data;})
+    .catch(error=>{if(generation===workspaceGeneration&&error.name!=='AbortError')state.channelDescriptorErrors.set(key,error.message);throw error;})
+    .finally(()=>{if(descriptorRequests.get(key)===promise){descriptorRequests.delete(key);descriptorControllers.delete(key);}if(generation===workspaceGeneration)emit();});
   descriptorRequests.set(key,promise);return promise;
 }
 export function requestVisibleDescriptor(source) {
@@ -39,9 +50,9 @@ export function previewForChannels(view,crop=null,maxSize=1600) {
   return channelPreviews.get({channel_view:view,crop,max_size:maxSize});
 }
 export async function enterChannels() {
-  const asset=selectedAsset();if(state.tab==='analysis'&&state.analysisKind==='microscopy')state.sourceRoi=null;state.tab='channels';state.selectedAnnotationId=null;emit();
+  const asset=selectedAsset(),projectId=state.project.id;if(state.tab==='analysis'&&state.analysisKind==='microscopy')state.sourceRoi=null;state.tab='channels';state.selectedAnnotationId=null;emit();
   if(asset?.kind!=='image')return;
-  try {await loadChannelDescriptor(currentSourceIdentity());}catch(error){notify(`读取通道失败：${error.message}`,'error');}
+  try {await loadChannelDescriptor(currentSourceIdentity());}catch(error){if(error.name!=='AbortError'&&state.project.id===projectId)notify(`读取通道失败：${error.message}`,'error');}
 }
 function storeChannelView(view,label) {
   mutate(project=>{editableSource(project).channel_view=view;},label);

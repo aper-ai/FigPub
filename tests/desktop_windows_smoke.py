@@ -623,11 +623,18 @@ def run(app_dir, output, *, toolkit_archive=None, extraction_record=None):
         processes = native.family(launcher.pid)
         assert any(item['executable'].lower() == 'msedgewebview2.exe' for item in processes)
         assert not any(item['executable'].lower() in ('chrome.exe', 'msedge.exe', 'firefox.exe') for item in processes)
+        initial_project = page.request.get(origin + '/api/project').json()
+        initial_workspace = page.request.get(origin + '/api/workspace/status').json()
+        assert not any(initial_project[key] for key in ('assets', 'panels', 'annotations', 'measurements'))
+        assert initial_workspace['has_recovery'] is False and initial_workspace['cleanup_pending'] is False
+        assert initial_workspace['stored_asset_count'] == initial_workspace['current_asset_count'] == 0
+        assert page.locator('.asset-thumb img, [data-action="resume-workspace"]').count() == 0
         native.user32.SetForegroundWindow(native_window['handle'])
         page.screenshot(path=str(output / '01-home-webview.png'))
         native.screenshot(native_window['handle'], output / '01-home-native.png')
         checked(active_scenario, started, window_class=native_window['class'], health=health,
-                process_family=processes, csp=response.headers['content-security-policy'])
+                process_family=processes, csp=response.headers['content-security-policy'],
+                blank_workspace=initial_workspace)
 
         active_scenario = 'adjacent portable Cellpose component discovery and real isolated dependency probe'
         started = time.perf_counter()
@@ -738,6 +745,39 @@ def run(app_dir, output, *, toolkit_archive=None, extraction_record=None):
         assert state_value('state.project.panels.length') == 2
         saved()
         page.screenshot(path=str(output / '02-import-compose.png'))
+        checked(active_scenario, started)
+
+        active_scenario = 'native composition parameters apply without confirmation and retain atomic undo'
+        started = time.perf_counter()
+        click('composition-inspector', '[data-view="layout"]')
+        assert page.locator('[data-action="apply-journal-preset"], [data-action="apply-layout"]').count() == 0
+        original_figure = state_value('state.project.figure')
+        original_panels = state_value('state.project.panels')
+        original_history = state_value('state.history.length')
+        page.locator('#journal-preset').select_option('nature-single')
+        wait_state('state.project.figure.width_mm===89')
+        assert state_value('state.project.settings.composition.journal_preset_id') == 'nature-single'
+        assert state_value('state.history.length') == original_history + 1
+        assert state_value('state.project.panels.map(panel=>panel.label)') == ['a', 'b']
+        assert state_value('state.project.panels.map(panel=>panel.crop)') == [panel['crop'] for panel in original_panels]
+        click('undo')
+        assert state_value('state.project.figure') == original_figure
+        assert state_value('state.project.panels') == original_panels
+        change('#layout-margin_mm', '8')
+        wait_state('state.project.settings.composition.layout.margin_mm===8')
+        arranged_panels = state_value('state.project.panels')
+        assert arranged_panels != original_panels, 'Margin edits must rearrange the canvas without an Apply action.'
+        assert state_value('state.history.length') == original_history + 1
+        arranged_geometry = state_value('state.project.panels.map(panel=>[panel.x_mm,panel.y_mm,panel.width_mm,panel.height_mm])')
+        page.locator('#numbering-style').select_option('lower')
+        wait_state('state.project.panels[0].label==="a"')
+        assert state_value('state.project.panels.map(panel=>[panel.x_mm,panel.y_mm,panel.width_mm,panel.height_mm])') == arranged_geometry
+        click('undo'); click('undo')
+        assert state_value('state.project.figure') == original_figure
+        assert state_value('state.project.panels') == original_panels
+        assert state_value('state.history.length') == original_history
+        saved()
+        page.screenshot(path=str(output / '02b-auto-apply-properties.png'))
         checked(active_scenario, started)
 
         active_scenario = 'actual qPCR computation and derived chart in the desktop client'
@@ -926,16 +966,17 @@ def run(app_dir, output, *, toolkit_archive=None, extraction_record=None):
         playwright.stop()
         playwright = browser = page = None
 
-        active_scenario = 'restart restores the saved title, sources, chart and analysis record'
+        active_scenario = 'restart requires explicit recovery before restoring the saved sources and analysis'
         started = time.perf_counter()
         launcher = subprocess.Popen([str(application), '--data-dir', str(data), '--port', str(available_port())],
                                     cwd=app_dir, env=environment)
         desktop2 = wait_until(lambda: read_identity(data / 'desktop.json'), 'Restart failed to acquire desktop lock.')
         service2 = wait_until(lambda: read_identity(data / 'instance.json'), 'Restart failed to acquire service lock.')
-        restored = wait_until(lambda: local_json(service2['port'], '/api/project'), 'Restart did not restore the saved project.')
-        assert restored['title'] == close_title
-        assert len(restored['panels']) == 3 and len(restored['measurements']) == 1
-        assert {asset['sha256'] for asset in restored['assets']}.issuperset(file_hash(item) for item in [*images, table])
+        empty_project = wait_until(lambda: local_json(service2['port'], '/api/project'), 'Restart did not provide the empty recovery view.')
+        recovery = wait_until(lambda: local_json(service2['port'], '/api/workspace/status'), 'Restart did not expose recovery status.')
+        assert recovery['has_recovery'] is True and recovery['cleanup_pending'] is False
+        assert empty_project['title'] != close_title
+        assert not empty_project['assets'] and not empty_project['panels'] and not empty_project['measurements']
         window2 = wait_until(lambda: native.app_window(desktop2['pid']), 'Restarted native window missing.')
         wait_until(lambda: local_json(cdp_port, '/json/version'), 'Restarted embedded WebView2 unavailable.')
         playwright = sync_playwright().start()
@@ -944,6 +985,18 @@ def run(app_dir, output, *, toolkit_archive=None, extraction_record=None):
         page = application_page()
         page.set_default_timeout(20000)
         page.on('pageerror', lambda error: report['browser_errors'].append(str(error)))
+        page.locator('[data-action="restore-workspace"]').wait_for()
+        wait_state('state.modal?.type==="workspace-recovery" && state.workspaceStatus?.has_recovery')
+        assert state_value('state.project.assets.length') == 0
+        assert page.locator('.asset-thumb img').count() == 0
+        assert page.locator('[data-action="resume-workspace"]').count() == 0
+        page.screenshot(path=str(output / '10a-explicit-recovery.png'))
+        click('restore-workspace')
+        wait_state('!state.busy && !state.modal && !state.workspaceStatus.has_recovery && state.project.panels.length===3')
+        restored = wait_until(lambda: local_json(service2['port'], '/api/project'), 'Explicit recovery did not restore the saved project.')
+        assert restored['title'] == close_title
+        assert len(restored['panels']) == 3 and len(restored['measurements']) == 1
+        assert {asset['sha256'] for asset in restored['assets']}.issuperset(file_hash(item) for item in [*images, table])
         page.locator('[data-action="resume-workspace"]').wait_for()
         assert page.locator('#project-title').input_value() == close_title
         page.screenshot(path=str(output / '10-restored-workspace.png'))
@@ -992,6 +1045,32 @@ def run(app_dir, output, *, toolkit_archive=None, extraction_record=None):
         page.screenshot(path=str(output / '11-native-cellpose-nuclei.png'))
         checked(active_scenario, started, model_record=model_record, foreground_pixels=int(np.count_nonzero(labels)))
 
+        active_scenario = 'native workspace clearing deletes owned copies and preserves external files'
+        started = time.perf_counter()
+        external_hashes = {path: file_hash(path) for path in [*images, table, nucleus_path, archive_path]}
+        owned_assets = state_value('state.project.assets.map(asset=>asset.id)')
+        assert owned_assets and any((data / 'originals').iterdir())
+        click('home')
+        click('clear-workspace-dialog')
+        wait_state('state.modal?.type==="clear-workspace"')
+        click('clear-workspace')
+        wait_state('!state.busy && state.modal?.type==="workspace-cleanup-exit" && state.project.assets.length===0')
+        cleared_workspace = page.request.get(origin + '/api/workspace/status').json()
+        cleared_project = page.request.get(origin + '/api/project').json()
+        assert cleared_workspace['has_recovery'] is False and cleared_workspace['cleanup_pending'] is False
+        assert cleared_workspace['stored_asset_count'] == cleared_workspace['current_asset_count'] == 0
+        assert not any(cleared_project[key] for key in ('assets', 'panels', 'annotations', 'measurements'))
+        assert list((data / 'originals').iterdir()) == []
+        assert not (data / 'assets.json').exists() and not (data / 'current.backup.json').exists()
+        assert not (data / '.workspace-clear-pending.json').exists()
+        for asset_id in owned_assets:
+            assert page.request.get(origin + '/api/assets/' + asset_id + '/original').status == 404
+        assert all(file_hash(path) == digest for path, digest in external_hashes.items())
+        assert page.locator('.asset-thumb img, [data-action="resume-workspace"]').count() == 0
+        page.screenshot(path=str(output / '12-cleared-native-workspace.png'))
+        checked(active_scenario, started, removed_asset_count=len(owned_assets),
+                external_files_preserved=len(external_hashes), workspace_status=cleared_workspace)
+
         active_scenario = 'restart and completed model worker leave no processes after native close'
         started = time.perf_counter()
         family2 = native.family(launcher.pid)
@@ -1000,7 +1079,46 @@ def run(app_dir, output, *, toolkit_archive=None, extraction_record=None):
         assert launcher.returncode == 0
         wait_until(lambda: all(not native.running(item['pid']) for item in family2), 'Restarted process family leaked.', timeout=15)
         assert port_closed(service2['port']) and port_closed(cdp_port)
+        assert not list((data / 'cache').glob('desktop-private-*')), 'The native preview cache survived clean exit.'
         checked(active_scenario, started)
+
+        browser.close()
+        playwright.stop()
+        playwright = browser = page = None
+        active_scenario = 'cleared native workspace stays empty after restart'
+        started = time.perf_counter()
+        launcher = subprocess.Popen([str(application), '--data-dir', str(data), '--port', str(available_port())],
+                                    cwd=app_dir, env=environment)
+        desktop3 = wait_until(lambda: read_identity(data / 'desktop.json'), 'Cleared workspace failed to restart.')
+        service3 = wait_until(lambda: read_identity(data / 'instance.json'), 'Cleared workspace backend failed to start.')
+        window3 = wait_until(lambda: native.app_window(desktop3['pid']), 'Cleared workspace native window missing.')
+        wait_until(lambda: local_json(cdp_port, '/json/version'), 'Cleared workspace WebView2 unavailable.')
+        playwright = sync_playwright().start()
+        browser = playwright.chromium.connect_over_cdp(f'http://127.0.0.1:{cdp_port}', no_defaults=True)
+        origin = f"http://127.0.0.1:{service3['port']}"
+        page = application_page()
+        page.set_default_timeout(20000)
+        page.on('pageerror', lambda error: report['browser_errors'].append(str(error)))
+        page.locator('#home-title').wait_for()
+        wait_state('state.project && !state.busy && !state.modal')
+        status3 = page.request.get(origin + '/api/workspace/status').json()
+        project3 = page.request.get(origin + '/api/project').json()
+        assert status3['has_recovery'] is False and status3['cleanup_pending'] is False
+        assert status3['stored_asset_count'] == status3['current_asset_count'] == 0
+        assert not any(project3[key] for key in ('assets', 'panels', 'annotations', 'measurements'))
+        assert page.locator('.asset-thumb img, [data-action="restore-workspace"], [data-action="resume-workspace"]').count() == 0
+        assert list((data / 'originals').iterdir()) == []
+        assert all(file_hash(path) == digest for path, digest in external_hashes.items())
+        page.screenshot(path=str(output / '13-empty-after-native-restart.png'))
+        family3 = native.family(launcher.pid)
+        native.close(window3['handle'])
+        wait_until(lambda: launcher.poll() is not None, 'Cleared workspace client did not close.', timeout=35)
+        assert launcher.returncode == 0
+        wait_until(lambda: all(not native.running(item['pid']) for item in family3),
+                   'Cleared workspace process family leaked.', timeout=15)
+        assert port_closed(service3['port']) and port_closed(cdp_port)
+        assert not list((data / 'cache').glob('desktop-private-*'))
+        checked(active_scenario, started, workspace_status=status3, preview_cache_removed=True)
 
         if report['browser_errors']:
             raise AssertionError('Uncaught application errors: ' + repr(report['browser_errors']))

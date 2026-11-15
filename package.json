@@ -1,6 +1,6 @@
 {
   "name": "figure-workbench-development",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "private": true,
   "description": "Figure Workbench desktop scientific workbench and optional browser composition studio",
   "scripts": {

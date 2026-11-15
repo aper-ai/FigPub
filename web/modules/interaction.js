@@ -1,14 +1,14 @@
-import {state,emit,notify,notifyError,mutate,selectedAsset,selectedPanel,selectedPanels,selectedEdit,editableSource,replaceProject,selectAsset,selectPanel,undo,redo,persistProject,flushSave,withBusy,currentRawSource,availableAnalysisChannels,selectedAnalysisChannels,analysisWorkspaceKey,setAnalysisChannel,setAnalysisGeometry,restoreAnalysisGeometry,analysisSelection} from './state.js';
+import {state,emit,notify,notifyError,mutate,selectedAsset,selectedPanel,selectedPanels,selectedEdit,editableSource,replaceProject,selectAsset,selectPanel,undo,redo,persistProject,flushSave,settleWorkspaceWrites,withBusy,currentRawSource,availableAnalysisChannels,selectedAnalysisChannels,analysisWorkspaceKey,setAnalysisChannel,setAnalysisGeometry,restoreAnalysisGeometry,analysisSelection} from './state.js';
 import {request,importAssets,openProject,exportFile,saveBlob,downloadOriginal,downloadMessage} from './api.js';
 import {clone,uid,number,clamp,round,fullCrop,emptyDisplay,panelFromAsset,ensureProject,updateScaleBar,scaleBarGeometry,isAnalysisChartType} from './domain.js';
-import {loadTable,runAnalysis,cancelJob,retryJobStatus,downloadResults,plotResults,loadCellposeStatus} from './analysis.js';
+import {loadTable,runAnalysis,cancelJob,retryJobStatus,downloadResults,plotResults,loadCellposeStatus,clearTableWorkspace} from './analysis.js';
 import {detectGel,cancelGel,evenlySpaceLanes} from './gel.js';
 import {bindGestures,finishPolygon} from './gestures.js';
-import {enterChannels,changeChannelField,changeChannelMode,changeSplitSetting,changeSourcePlane,resetChannelView,autoRangeChannels,openChannelComposition,addCompositionSource,editCompositionSource,confirmChannelComposition,addChannelPanels,loadChannelDescriptor,currentSourceIdentity,currentChannelView,channelSourceDimensions,channelPreviews} from './channels.js';
+import {enterChannels,changeChannelField,changeChannelMode,changeSplitSetting,changeSourcePlane,resetChannelView,autoRangeChannels,openChannelComposition,addCompositionSource,editCompositionSource,confirmChannelComposition,addChannelPanels,loadChannelDescriptor,currentSourceIdentity,currentChannelView,channelSourceDimensions,channelPreviews,clearChannelWorkspace} from './channels.js';
 import {markInputDraft,beginInputCommit,holdPointerDraft,releasePointerDraft,releasePointerDraftSoon,discardInputDraft} from './input-lifecycle.js';
 import {openWbWorkflow,handleWbAction,handleWbInput} from './wb-workflow.js';
 import {advancedActions,handleAdvancedChange} from './histology-fibers.js';
-import {bindInstanceReview} from './instance-review.js';
+import {bindInstanceReview,clearInstanceReviewSessions} from './instance-review.js';
 import {compositionActions,changeCompositionOption,compositionIssues,addAssetsToComposition,arrangeComposition,resizeComposition,alignComposition,duplicateComposition,groupComposition,selectAllComposition} from './composition.js';
 import {requestComposerFit} from './composer-viewport.js';
 import {taskById,taskForWorkspace,acceptsTaskAsset,resolveTaskImport,preferredResumeTab,hasProjectContent} from './workflows.js';
@@ -25,7 +25,47 @@ function changeHistory(change) {
   if(state.tab==='analysis'&&state.analysisKind==='qpcr'&&selectedAsset()?.kind==='table'&&!qpcrTableMatches(state.table,state.selectedAssetId,state.analysisParams))return loadTable();
 }
 
+function assertWorkspaceReady() {
+  if(state.workspaceStatus?.cleanup_pending)throw new Error('本机数据尚未清理完成，请先重试清理。');
+  if(state.workspaceStatus?.has_recovery)throw new Error('请先恢复上次工作区，或明确新建、清除本机工作区。');
+}
+function closeModal() {
+  state.modal=state.workspaceStatus?.cleanup_pending?{type:'workspace-cleanup'}:state.workspaceStatus?.has_recovery?{type:'workspace-recovery'}:null;emit();
+}
+function replaceWorkspace(project) {
+  clearChannelWorkspace();clearInstanceReviewSessions();clearTableWorkspace();replaceProject(project);
+  state.workspaceStatus={has_recovery:false,cleanup_pending:false};state.lastWorkspaceTab=null;
+}
+async function restoreWorkspace() {
+  assertWorkspaceCanSwitch();
+  await withBusy('正在恢复本机工作区…',async()=>{
+    const project=await request('/api/workspace/restore',{method:'POST'});replaceWorkspace(project);
+    state.modal=null;state.tab='home';emit();notify('已根据你的选择恢复本机工作区。');
+  },{cancellable:false});
+}
+async function clearLocalWorkspace() {
+  assertWorkspaceCanSwitch();
+  await withBusy('正在清除本机工作区副本…',async()=>{
+    await settleWorkspaceWrites();
+    let result;
+    try{result=await request('/api/workspace/clear',{method:'POST',body:{confirm:true}});}
+    catch(error){
+      try{state.workspaceStatus=await request('/api/workspace/status');}catch{}
+      if(state.workspaceStatus?.cleanup_pending){
+        try{const empty=await request('/api/project');clearChannelWorkspace();clearInstanceReviewSessions();clearTableWorkspace();replaceProject(empty);}catch{}
+        state.modal={type:'workspace-cleanup'};
+      }
+      emit();throw error;
+    }
+    if(result?.cleared!==true||!result.project)throw new Error('未取得清理完成确认，请重试。');
+    replaceWorkspace(result.project);state.tab='home';
+    state.modal=result.requires_restart?{type:'workspace-cleanup-exit'}:null;emit();
+    notify(result.requires_restart?'工作区副本已删除；请完成对话框中的预览缓存清理步骤。':'软件保存的工作区副本已清除。',result.requires_restart?'info':'success');
+  },{cancellable:false});
+}
+
 function requestImport(task=null) {
+  assertWorkspaceReady();
   const intent=taskById(task)?.id || taskForWorkspace(state.tab,state.analysisKind);
   if(intent==='wb'){state.importIntent='wb';document.getElementById('import-wb-files').click();return;}
   state.importIntent=intent;
@@ -59,6 +99,7 @@ function showRunningAnalysis() {
 
 async function importSelectedFiles(files,{wb=false,compose=false,task=null}={}) {
   if(!files.length)return;
+  assertWorkspaceReady();
   if(state.busy){notify('请等当前操作完成后再导入文件','info');return;}
   const intent=wb?'wb':compose?'compose':task || taskForWorkspace(state.tab,state.analysisKind);
   let imported=false;
@@ -93,9 +134,10 @@ function assertWorkspaceCanSwitch() {
 
 async function importProjectFile(file,{confirmed=false}={}) {
   if(!file)return;
+  assertWorkspaceReady();
   assertWorkspaceCanSwitch();
   if(!confirmed&&hasProjectContent(state.project)){state.modal={type:'switch-project',file};emit();return;}
-  await withBusy('正在校验并恢复项目…',async()=>{await flushSave();const project=await openProject(file);replaceProject(project);state.tab=preferredResumeTab(project);const warnings=project.settings?.migration_warnings || [];state.modal=warnings.length?{type:'migration',warnings}:null;emit();notify(warnings.length?`项目已导入，${warnings.length} 项迁移提示需要核对`:'项目已恢复，原件与编辑状态已载入',warnings.length?'info':'success');if(state.tab==='source'&&selectedAsset()?.kind==='table')await loadTable();},{cancellable:false});
+  await withBusy('正在校验并恢复项目…',async()=>{await flushSave();const project=await openProject(file);replaceWorkspace(project);state.tab=preferredResumeTab(project);const warnings=project.settings?.migration_warnings || [];state.modal=warnings.length?{type:'migration',warnings}:null;emit();notify(warnings.length?`项目已导入，${warnings.length} 项迁移提示需要核对`:'项目已恢复，原件与编辑状态已载入',warnings.length?'info':'success');if(state.tab==='source'&&selectedAsset()?.kind==='table')await loadTable();},{cancellable:false});
 }
 
 async function saveProjectCopy({keepModal=false}={}) {
@@ -105,11 +147,6 @@ async function saveProjectCopy({keepModal=false}={}) {
     await flushSave();const result=await exportFile({project:state.project,format:'project'},signal);
     state.modal=previous;emit();notify(downloadMessage(result)+(keepModal?(result.delivery==='saved'?'。可以继续切换项目。':'。请确认副本已保存，再继续切换。'):''));
   });
-}
-
-async function openDemo() {
-  assertWorkspaceCanSwitch();
-  await withBusy('正在准备合成示例…',async()=>{await flushSave();const result=await request('/api/demo',{method:'POST'});const project=result.project || result;replaceProject(project);state.modal=null;state.tab='compose';emit();notify('已打开示例项目，所有示例素材均为合成数据','info');},{cancellable:false});
 }
 
 async function runPreflight() {
@@ -191,14 +228,15 @@ const actions={
   'open-project':()=>document.getElementById('open-project').click(),
   'project-menu':()=>{state.modal={type:'project'};emit();},
   'new-dialog':()=>{assertWorkspaceCanSwitch();state.modal={type:'new'};emit();},
-  'create-project':async()=>{assertWorkspaceCanSwitch();const title=document.getElementById('new-project-title').value.trim() || '未命名 Figure';await withBusy('正在创建项目…',async()=>{await flushSave();replaceProject(await request('/api/project/new',{method:'POST',body:{title}}));state.tab='home';state.lastWorkspaceTab=null;state.modal=null;emit();},{cancellable:false});},
-  'demo':()=>{assertWorkspaceCanSwitch();if(hasProjectContent(state.project)){state.modal={type:'demo'};emit();}else return openDemo();},
-  'load-demo':openDemo,
+  'create-project':async()=>{assertWorkspaceCanSwitch();const title=document.getElementById('new-project-title').value.trim() || '未命名 Figure';await withBusy('正在创建项目…',async()=>{if(!state.workspaceStatus?.has_recovery)await flushSave();replaceWorkspace(await request('/api/project/new',{method:'POST',body:{title}}));state.tab='home';state.lastWorkspaceTab=null;state.modal=null;emit();},{cancellable:false});},
+  'restore-workspace':restoreWorkspace,
+  'clear-workspace-dialog':()=>{assertWorkspaceCanSwitch();state.modal={type:state.workspaceStatus?.cleanup_pending?'workspace-cleanup':'clear-workspace'};emit();},
+  'clear-workspace':clearLocalWorkspace,
   'undo':()=>changeHistory(undo),'redo':()=>changeHistory(redo),
   'save-project':()=>saveProjectCopy(),
   'export-dialog':()=>{state.modal={type:'export',format:'pdf',dpi:300,outlined:false};emit();},
   'export-file':()=>{const options=clone(state.modal),sizeIssue=exportSizeIssue(options.format,state.project.figure);if(sizeIssue){notify(sizeIssue,'info');return;}if(options.format!=='sources'&&!state.project.panels.length&&!state.project.annotations.length){notify('请先将图片、图表或标注加入画布，再导出图稿。','info');return;}return withBusy('正在生成并保存导出文件…',async signal=>{await flushSave();const result=await exportFile({project:state.project,format:options.format,dpi:options.dpi,outlined_text:options.outlined},signal);state.modal=null;emit();notify(downloadMessage(result));});},
-  'close-modal':()=>{state.modal=null;emit();},
+  'close-modal':closeModal,
   'cancel-busy':()=>state.busyController?.abort(),
   'help':()=>{state.modal={type:'help'};emit();},
   'select-asset':element=>{selectAsset(element.dataset.id);const asset=selectedAsset();if(state.tab==='compose')state.tab='source';if(['gel','channels','analysis'].includes(state.tab)&&asset?.kind!=='image'&&asset?.kind!=='table')state.tab='source';if(state.tab==='analysis'&&asset?.kind==='table')state.analysisKind='qpcr';if(state.tab==='analysis'&&asset?.kind==='image'&&state.analysisKind==='qpcr')state.tab='source';state.workspaceTask=taskForWorkspace(state.tab,state.analysisKind);emit();if(asset?.kind==='table')return loadTable();if(state.tab==='channels')return enterChannels();},
@@ -352,6 +390,9 @@ function changeHandler(event) {
 }
 
 function keyHandler(event) {
+  // IME confirmation belongs to the native input, including browsers that
+  // identify its final Enter only with the legacy composition key code.
+  if(event.isComposing || event.keyCode===229)return;
   // Native controls and accessible activation targets own Enter and Space.
   // Source drawing shortcuts apply only when focus is outside those controls.
   if((event.key==='Enter'||event.code==='Space')&&event.target.closest('button,a[href],summary,[role="button"],[role="link"]'))return;
@@ -365,7 +406,7 @@ function keyHandler(event) {
   }
   if(state.modal&&event.key==='Enter'&&editing){if(state.modal.type==='marker'){event.preventDefault();beginInputCommit(event.target);actions['confirm-marker']();return;}if(state.modal.type==='new'){event.preventDefault();beginInputCommit(event.target);return actions['create-project']();}}
   if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();if(state.busy)return;if(editing&&event.target.matches('[data-pending-edit]'))changeHandler({target:event.target});if(event.shiftKey){saveProjectCopy();return;}persistProject().then(()=>notify('已保存到本机工作区；备份或换电脑请使用「另存项目」')).catch(()=>{});return;}
-  if(event.key==='Escape'){event.preventDefault();discardInputDraft(event.target);if(state.modal)state.modal=null;else if(state.tab==='compose'){state.selectedPanelId=null;state.selectedPanelIds=[];state.selectedAnnotationId=null;}else{state.sourceTool='select';state.sourcePolygon=[];if(!(state.tab==='analysis'&&state.analysisKind==='microscopy'))state.sourceRoi=null;}emit();return;}
+  if(event.key==='Escape'){event.preventDefault();discardInputDraft(event.target);if(state.modal){closeModal();return;}else if(state.tab==='compose'){state.selectedPanelId=null;state.selectedPanelIds=[];state.selectedAnnotationId=null;}else{state.sourceTool='select';state.sourcePolygon=[];if(!(state.tab==='analysis'&&state.analysisKind==='microscopy'))state.sourceRoi=null;}emit();return;}
   if(event.key==='Enter'&&editing&&!state.modal&&event.target.matches('[data-pending-edit]')){event.preventDefault();changeHandler({target:event.target});event.target.blur();return;}
   if(editing || state.modal || state.interactionLock)return;
   if(event.key==='Enter'&&state.sourceTool==='polygon'){event.preventDefault();finishPolygon();return;}
@@ -389,8 +430,8 @@ function bindDragDrop() {
 }
 
 export function bindInteractions() {
-  document.addEventListener('click',event=>{const element=event.target.closest('[data-action]');if(!element || element.disabled)return;event.preventDefault();if(state.busy&&element.dataset.action!=='cancel-busy')return;const action=actions[element.dataset.action];Promise.resolve().then(()=>action?action(element,event):handleWbAction(element.dataset.action,element)).catch(error=>notifyError(error));});
-  document.addEventListener('click',event=>{if(!state.busy&&event.target.matches('[data-modal-backdrop]')){state.modal=null;emit();}});
+  document.addEventListener('click',event=>{const element=event.target.closest('[data-action]');if(!element || element.disabled)return;event.preventDefault();if(state.busy&&element.dataset.action!=='cancel-busy')return;if((state.workspaceStatus?.has_recovery||state.workspaceStatus?.cleanup_pending)&&!['restore-workspace','clear-workspace-dialog','clear-workspace','new-dialog','create-project','close-modal','dismiss-error'].includes(element.dataset.action)){closeModal();return;}const action=actions[element.dataset.action];Promise.resolve().then(()=>action?action(element,event):handleWbAction(element.dataset.action,element)).catch(error=>notifyError(error));});
+  document.addEventListener('click',event=>{if(!state.busy&&event.target.matches('[data-modal-backdrop]'))closeModal();});
   document.addEventListener('change',event=>{try{changeHandler(event);}catch(error){notify(error.message || '设置未应用','error');emit();}});
   document.addEventListener('input',event=>{
     const element=event.target;
@@ -420,3 +461,4 @@ export function bindInteractions() {
   bindGestures();bindDragDrop();
   bindInstanceReview({state,emit,mutate,request,notify,flushSave,saveBlob,currentSelection:()=>analysisSelection('microscopy')});
 }
+

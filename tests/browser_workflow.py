@@ -22,6 +22,7 @@ from PIL import Image
 import uvicorn
 from playwright.sync_api import sync_playwright
 from workbench.server import create_app
+from workbench.storage import ProjectStore
 
 
 def main():
@@ -33,6 +34,11 @@ def main():
         print('PASS',name,flush=True)
 
     with tempfile.TemporaryDirectory(prefix='figure-browser-') as directory:
+        # Synthetic fixture creation belongs to test code, never a production UI route.
+        fixture_store=ProjectStore(Path(directory)/'fixture-source')
+        fixture_store.demo()
+        fixture_project=Path(directory)/'SYNTHETIC_FIXTURE.figwork'
+        fixture_project.write_bytes(fixture_store.export_archive())
         from run import reserve_port
         listener=reserve_port(0)
         port=listener.getsockname()[1]
@@ -85,9 +91,11 @@ def main():
                     page.goto(base,wait_until='networkidle')
                     assert page.title().startswith('图研')
                     page.screenshot(path=str(output/'01-empty.png'))
-                    click('demo');page.locator('#figure-svg').wait_for();wait_state('state.project.assets.length===3')
+                    assert page.locator('[data-action="demo"]').count()==0
+                    page.locator('#open-project').set_input_files(fixture_project)
+                    page.locator('#figure-svg').wait_for();wait_state('state.project.assets.length===3 && !state.busy')
                     assert page.locator('.figure-panel').count()==2
-                    checked('empty workspace and synthetic demo',started)
+                    checked('empty workspace and explicit synthetic fixture import',started)
 
                     started=time.perf_counter()
                     click('select-panel')

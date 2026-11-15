@@ -17,7 +17,7 @@ export function newProject() {
   const time = new Date().toISOString();
   const project = {schema_version: 1, id: uid('browser'), title: '未命名图稿', revision: 0, created_at: time, updated_at: time,
     assets: [], figure: {width_mm: 180, height_mm: 120, background: '#ffffff'}, panels: [], annotations: [], measurements: [], audit: [],
-    settings: {min_ppi: 300, browser_studio: {version: '0.6.1'}, asset_edits: {}, analysis_rois: []}};
+    settings: {min_ppi: 300, browser_studio: {version: '0.6.2'}, asset_edits: {}, analysis_rois: []}};
   ensureCompositionSettings(project); return project;
 }
 export function panelForAsset(asset) {

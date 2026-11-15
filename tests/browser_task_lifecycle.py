@@ -104,7 +104,7 @@ def controlled_service():
                 finally:
                     with controls.lock:
                         controls.active_pixel_requests -= 1
-            if method == 'POST' and path in {'/api/project/new', '/api/project/open', '/api/demo'}:
+            if method == 'POST' and path in {'/api/project/new', '/api/project/open'}:
                 with controls.lock:
                     controls.project_replacements.append(path)
             if method == 'POST' and path == '/api/jobs':
